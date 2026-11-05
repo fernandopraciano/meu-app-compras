@@ -528,6 +528,22 @@
         showTab('lista');
         render();
 
+        // Criar botão de instalação dinamicamente no header
+        const headerDiv = document.querySelector('header > div');
+        if (headerDiv) {
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'flex gap-2';
+            const scannerBtn = headerDiv.querySelector('button');
+            const btnInstalar = document.createElement('button');
+            btnInstalar.id = 'btnInstalar';
+            btnInstalar.className = 'p-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors hidden';
+            btnInstalar.title = 'Instalar aplicativo';
+            btnInstalar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>';
+            btnContainer.appendChild(scannerBtn.cloneNode(true));
+            btnContainer.appendChild(btnInstalar);
+            headerDiv.replaceChild(btnContainer, scannerBtn);
+        }
+
         // Registrar Service Worker simples via Data URI (exigido para PWA)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch", (e) => {});')
