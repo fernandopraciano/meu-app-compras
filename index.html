@@ -2,305 +2,1254 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Kitchen & Market</title>
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlNtYXJ0IEtpdGNoZW4gJiBNYXJrZXQiLAogICJzaG9ydF9uYW1lIjogIlNtYXJ0IEtpdGNoZW4iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2ZmZmZmZiIsCiAgInRoZW1lX2NvbG9yIjogIiMxMGI5ODEiLAogICJpY29ucyI6IFt7CiAgICAic3JjIjogImh0dHBzOi8vZW1vamkudGVkZHAuY29tL3ZmL3UvMTIxNTk0MDgvMTI4LzEyOC9kYy9zcHJpbmtsZS1jaG9jb2xhdGUtY29uZmV0dGktY2F0LTEyOC5wbmciLAogICAgInNpemVzIjogIjEyOHgxMjgiLAogICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogIH1dCn0=">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#F8FAFC">
+    <meta name="description" content="Lista de compras, orçamento, estoque e histórico de gastos em um só lugar.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Minhas Compras">
+    <title>Minhas Compras</title>
+
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'] },
+                    colors: {
+                        ink: '#111827',
+                        surface: '#F8FAFC',
+                        line: '#E5E7EB',
+                        muted: '#64748B',
+                        danger: '#DC2626',
+                        warn: '#F59E0B',
+                        brand: { 50: '#ECFDF5', 100: '#D1FAE5', 400: '#34D399', 500: '#10B981', 600: '#059669', 700: '#047857' }
+                    },
+                    boxShadow: {
+                        card: '0 1px 2px rgba(16,24,40,.04), 0 12px 32px -20px rgba(16,24,40,.18)'
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://unpkg.com/tesseract.js@v4/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/lucide@0.294.0/dist/umd/lucide.min.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Fira Sans', sans-serif; }
+        :root { --brand: #059669; }
+
+        * { -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: #F8FAFC;
+            color: #111827;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+
+        /* Números financeiros alinhados */
+        .num { font-variant-numeric: tabular-nums; }
+
         .tab-content.hidden { display: none; }
-        .glass-card { background: #ffffff; border: 1px solid #f0f0f0; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
-        .btn-main { transition: all 0.25s ease; }
-        .btn-main:active { transform: scale(0.98); }
-        .tab-btn { color: #9ca3af; transition: all 0.3s; }
-        .tab-btn.active { color: #1f2937; font-weight: 700; }
-        .animate-item { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Campos de formulário padronizados */
+        .field {
+            width: 100%;
+            height: 2.75rem;
+            border-radius: 14px;
+            border: 1px solid #E5E7EB;
+            background: #fff;
+            padding: 0 0.875rem;
+            font-size: 0.875rem;
+            color: #111827;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .field::placeholder { color: #94A3B8; }
+        .field:focus { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.12); }
+        textarea.field { height: auto; padding: 0.75rem 0.875rem; line-height: 1.5; }
+        .field-label {
+            display: block;
+            margin-bottom: 0.375rem;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: #64748B;
+        }
+
+        /* Botões */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            height: 2.875rem;
+            border-radius: 14px;
+            font-size: .875rem;
+            font-weight: 600;
+            transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(.985); }
+        .btn:disabled { cursor: not-allowed; }
+        .btn-primary { background: #059669; color: #fff; }
+        .btn-primary:hover { background: #047857; }
+        .btn-secondary { background: #fff; border: 1px solid #E5E7EB; color: #111827; }
+        .btn-secondary:hover { background: #F8FAFC; }
+        .btn-ink { background: #111827; color: #fff; }
+        .btn-ink:hover { background: #1F2937; }
+        .btn-danger { background: #DC2626; color: #fff; }
+        .btn-danger:hover { background: #B91C1C; }
+        .btn-ghost { background: transparent; color: #64748B; }
+        .btn-ghost:hover { background: #F1F5F9; }
+
+        /* Segmented control */
+        .seg { display: flex; gap: 4px; background: #F1F5F9; border-radius: 12px; padding: 4px; }
+        .seg-btn {
+            flex: 1;
+            height: 2.25rem;
+            border-radius: 9px;
+            font-size: .8125rem;
+            font-weight: 600;
+            color: #64748B;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .375rem;
+            transition: all .15s ease;
+        }
+        .seg-btn.seg-active { background: #fff; color: #059669; box-shadow: 0 1px 2px rgba(16,24,40,.08); }
+
+        /* Navegação inferior */
+        .tab-btn { color: #94A3B8; transition: color .2s ease; }
+        .tab-btn.active { color: #059669; font-weight: 600; }
+        .tab-btn .nav-pill { transition: background-color .2s ease, transform .2s ease; }
+        .tab-btn.active .nav-pill { background: #ECFDF5; }
+        .tab-btn:active .nav-pill { transform: scale(.94); }
+
+        /* Modais */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            background: rgba(17, 24, 39, .45);
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+        .modal.open { display: flex; }
+        .sheet {
+            width: 100%;
+            max-width: 28rem;
+            max-height: 92vh;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            padding: 1.25rem;
+            padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+            animation: sheetUp .3s cubic-bezier(.16, 1, .3, 1);
+            overscroll-behavior: contain;
+        }
+        @media (min-width: 640px) {
+            .modal { align-items: center; padding: 1rem; }
+            .sheet { border-radius: 24px; max-height: 88vh; padding-bottom: 1.25rem; }
+        }
+        @keyframes sheetUp {
+            from { opacity: .6; transform: translateY(28px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Animações sutis */
+        .item-out { animation: itemOut .18s ease forwards; }
+        @keyframes itemOut {
+            to { opacity: 0; transform: translateX(14px) scale(.98); }
+        }
+        .toast-in { animation: toastIn .26s cubic-bezier(.16, 1, .3, 1); }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(10px) scale(.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .fade-in { animation: fadeIn .2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Detalhes / histórico */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+
+        /* Scroll horizontal sem barra */
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* Foco acessível */
+        button:focus-visible, summary:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(5,150,105,.25);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+        }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 pb-24" style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
+<body>
 
-    <header class="p-6 pb-2">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Lista de Hoje</h1>
-                <p class="text-sm text-gray-400 font-medium mt-1">Gerencie suas compras</p>
+    <header class="px-5 pb-4" style="padding-top: max(1.25rem, env(safe-area-inset-top));">
+        <div class="mx-auto flex max-w-md items-center justify-between gap-3">
+            <div class="min-w-0">
+                <h1 id="headerTitle" class="truncate text-[22px] font-semibold leading-tight tracking-tight text-ink">Minhas compras</h1>
+                <p id="headerSub" class="mt-0.5 truncate text-xs font-medium text-muted">Gerencie suas compras</p>
             </div>
-            <button onclick="openScanner()" class="p-4 bg-gray-900 text-white rounded-2xl">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6H4zM4 4h6v6H4zM14 14h6v6h-6zM14 4h6v6h-6z"/></svg>
-            </button>
+            <div class="flex shrink-0 items-center gap-2">
+                <button id="btnInstalar" onclick="instalarApp()" style="display:none" class="h-10 w-10 place-items-center rounded-full border border-line bg-white text-ink shadow-card active:scale-95" aria-label="Instalar aplicativo">
+                    <i data-lucide="download" class="h-[18px] w-[18px]"></i>
+                </button>
+                <button onclick="openScanner()" class="grid h-10 w-10 place-items-center rounded-full bg-ink text-white shadow-card active:scale-95" aria-label="Escanear código de barras">
+                    <i data-lucide="scan-line" class="h-[18px] w-[18px]"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <main id="app" class="p-4 max-w-2xl mx-auto">
-        <div id="lista" class="tab-content">
-            <div class="bg-gray-900 p-6 rounded-3xl shadow-sm mb-6 text-white">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Orçamento</span>
-                        <div class="flex items-center gap-1 mt-1">
-                            <span class="text-gray-400 font-bold">R$</span>
-                            <input type="number" id="inputBudget" onchange="updateBudget()" class="bg-transparent text-2xl font-black text-white w-24 border-b border-gray-700 focus:outline-none focus:border-white" value="200">
+    <main class="mx-auto max-w-md px-5" style="padding-bottom: calc(92px + env(safe-area-inset-bottom));">
+
+        <!-- ================= LISTA ================= -->
+        <section id="lista" class="tab-content">
+            <!-- Card de orçamento -->
+            <div class="relative overflow-hidden rounded-[20px] bg-ink p-5 text-white shadow-card">
+                <div class="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-brand-500/15 blur-2xl"></div>
+                <div class="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-brand-500/10 blur-2xl"></div>
+
+                <div class="relative flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Saldo disponível</p>
+                        <div class="mt-1.5 flex items-baseline gap-1.5">
+                            <span class="text-sm font-medium text-slate-400">R$</span>
+                            <span id="saldoValor" class="num text-[32px] font-bold leading-none tracking-tight text-brand-400">0,00</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Disponível</span>
-                        <div id="displaySaldo" class="text-2xl font-black text-emerald-400 mt-1">0.00</div>
+                    <button onclick="abrirOrcamento()" class="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 active:scale-95" aria-label="Editar orçamento">
+                        <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>
+                    </button>
+                </div>
+
+                <div class="relative mt-5 grid grid-cols-2 divide-x divide-white/10 rounded-[14px] bg-white/[0.06] py-3">
+                    <div class="px-4">
+                        <p class="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">Orçamento</p>
+                        <p id="statOrcamento" class="num mt-1 truncate text-[13px] font-semibold text-white">R$ 0,00</p>
+                    </div>
+                    <div class="px-4">
+                        <p class="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">Gasto previsto</p>
+                        <p id="statGasto" class="num mt-1 truncate text-[13px] font-semibold text-white">R$ 0,00</p>
                     </div>
                 </div>
-                <div class="w-full bg-gray-800 rounded-full h-2">
-                    <div id="budgetBar" class="h-2 rounded-full bg-emerald-400 transition-all duration-300" style="width: 0%"></div>
+
+                <div class="relative mt-4">
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                        <div id="budgetBar" class="h-full rounded-full transition-all duration-500" style="width:0%;background:#10B981"></div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between gap-3">
+                        <span id="barHint" class="truncate text-[11px] font-medium text-slate-400">Dentro do orçamento</span>
+                        <span id="budgetPct" class="num shrink-0 text-[11px] font-semibold text-slate-300">0%</span>
+                    </div>
                 </div>
             </div>
-            
-            <div class="flex gap-3 mb-6">
-                <button onclick="openScanner()" class="btn-main flex-1 bg-white border border-gray-200 p-4 rounded-2xl font-bold text-gray-800 flex items-center justify-center gap-2 shadow-sm">
-                    <span>📷</span> Escanear
+
+            <!-- Ações -->
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <button onclick="openScanner()" class="btn btn-secondary">
+                    <i data-lucide="scan-line" class="h-[18px] w-[18px] text-brand-600"></i>
+                    Escanear
                 </button>
-                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="btn-main flex-1 bg-emerald-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-sm">
-                    <span>➕</span> Adicionar
+                <button onclick="abrirItemModal()" class="btn btn-primary">
+                    <i data-lucide="plus" class="h-[18px] w-[18px]"></i>
+                    Adicionar item
                 </button>
             </div>
 
-            <div id="items-container" class="space-y-3 mb-6"></div>
-            <button onclick="finalizarCompra()" class="btn-main w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-sm text-center">
-                Finalizar Compra
-            </button>
-        </div>
-
-        <div id="estoque" class="tab-content hidden">
-            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="btn-main w-full mb-6 py-4 bg-emerald-600 text-white font-bold rounded-2xl shadow-sm text-center">
-                📸 Escanear Nota Fiscal
-            </button>
-            <div id="estoque-container" class="space-y-3"></div>
-        </div>
-
-        <div id="receitas" class="tab-content hidden">
-            <div class="p-12 text-center">
-                <div class="text-6xl mb-4">👨‍🍳</div>
-                <h2 class="text-lg font-bold text-gray-900 mb-2">Receitas em Breve</h2>
-                <p class="text-gray-400">Sugestões de pratos com seus ingredientes virão em breve.</p>
+            <!-- Itens -->
+            <div class="mt-6 flex items-end justify-between px-0.5">
+                <h2 class="text-sm font-semibold text-ink">Itens da lista</h2>
+                <span id="listaContagem" class="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-muted ring-1 ring-line">0 itens</span>
             </div>
-        </div>
 
-        <div id="relatorio" class="tab-content hidden">
-            <h2 class="text-3xl font-extrabold text-gray-900 mb-6 tracking-tight">Histórico</h2>
-            <div id="historico-container" class="space-y-4 mb-24"></div>
-        </div>
+            <div id="items-container" class="mt-3 space-y-5"></div>
+
+            <button id="btnFinalizar" onclick="finalizarCompra()" class="btn mt-6 w-full">
+                <i data-lucide="check-check" class="h-[18px] w-[18px]"></i>
+                <span>Finalizar compra</span>
+            </button>
+        </section>
+
+        <!-- ================= ESTOQUE ================= -->
+        <section id="estoque" class="tab-content hidden">
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+                    <input id="buscaEstoque" inputmode="search" placeholder="Buscar no estoque"
+                           oninput="buscaEstoque=this.value;renderEstoque()"
+                           class="field pl-10" aria-label="Buscar no estoque">
+                </div>
+                <button onclick="abrirEstoqueModal()" class="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-brand-600 text-white shadow-card active:scale-95" aria-label="Adicionar item ao estoque">
+                    <i data-lucide="plus" class="h-5 w-5"></i>
+                </button>
+            </div>
+
+            <div id="estoqueChips" class="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5"></div>
+
+            <div id="estoqueAviso" class="mt-4"></div>
+
+            <div class="mt-4 flex items-center justify-between gap-3">
+                <p id="estoqueResumo" class="text-[11px] font-medium text-muted"></p>
+                <div class="flex items-center gap-1">
+                    <button onclick="importarDaLista()" class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-brand-700 transition active:scale-95">
+                        <i data-lucide="list-checks" class="h-3.5 w-3.5"></i> Importar lista
+                    </button>
+                    <button onclick="abrirModal('modalNota')" class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-muted transition active:scale-95">
+                        <i data-lucide="receipt" class="h-3.5 w-3.5"></i> Nota fiscal
+                    </button>
+                </div>
+            </div>
+
+            <div id="estoque-container" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+        </section>
+
+        <!-- ================= RECEITAS ================= -->
+        <section id="receitas" class="tab-content hidden">
+            <p class="text-xs leading-relaxed text-muted">Sugestões para aproveitar o que você já tem em casa.</p>
+            <div id="receitas-filtros" class="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5"></div>
+            <div id="receitas-root" class="mt-4 space-y-4"></div>
+        </section>
+
+        <!-- ================= GASTOS ================= -->
+        <section id="relatorio" class="tab-content hidden">
+            <div id="gastos-root"></div>
+        </section>
     </main>
 
-    <!-- Bottom Navigation -->
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-6 left-6 right-6 z-50 bg-white border border-gray-100 shadow-2xl rounded-3xl p-3 flex justify-around items-center">
-        <button onclick="showTab('lista')" class="tab-btn active flex flex-col items-center gap-1 p-2" data-tab="lista">
-            <span class="text-2xl">📋</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider">Lista</span>
-        </button>
-        <button onclick="showTab('estoque')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="estoque">
-            <span class="text-2xl">🏠</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider">Estoque</span>
-        </button>
-        <button onclick="showTab('receitas')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="receitas">
-            <span class="text-2xl">👨‍🍳</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider">Receitas</span>
-        </button>
-        <button onclick="showTab('relatorio')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="relatorio">
-            <span class="text-2xl">📈</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider">Gastos</span>
-        </button>
+    <!-- ================= NAVEGAÇÃO INFERIOR ================= -->
+    <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur" aria-label="Navegação principal">
+        <div class="mx-auto flex max-w-md items-stretch justify-around px-2" style="padding-top:.35rem;padding-bottom:max(.4rem, env(safe-area-inset-bottom));">
+            <button onclick="showTab('lista')" data-tab="lista" class="tab-btn active flex flex-1 flex-col items-center gap-1 rounded-xl py-1 text-[11px]" aria-label="Lista de compras">
+                <span class="nav-pill grid h-8 w-12 place-items-center rounded-full"><i data-lucide="list" class="h-[19px] w-[19px]"></i></span>
+                <span>Lista</span>
+            </button>
+            <button onclick="showTab('estoque')" data-tab="estoque" class="tab-btn flex flex-1 flex-col items-center gap-1 rounded-xl py-1 text-[11px]" aria-label="Estoque">
+                <span class="nav-pill grid h-8 w-12 place-items-center rounded-full"><i data-lucide="package" class="h-[19px] w-[19px]"></i></span>
+                <span>Estoque</span>
+            </button>
+            <button onclick="showTab('receitas')" data-tab="receitas" class="tab-btn flex flex-1 flex-col items-center gap-1 rounded-xl py-1 text-[11px]" aria-label="Receitas">
+                <span class="nav-pill grid h-8 w-12 place-items-center rounded-full"><i data-lucide="chef-hat" class="h-[19px] w-[19px]"></i></span>
+                <span>Receitas</span>
+            </button>
+            <button onclick="showTab('relatorio')" data-tab="relatorio" class="tab-btn flex flex-1 flex-col items-center gap-1 rounded-xl py-1 text-[11px]" aria-label="Gastos">
+                <span class="nav-pill grid h-8 w-12 place-items-center rounded-full"><i data-lucide="bar-chart-3" class="h-[19px] w-[19px]"></i></span>
+                <span>Gastos</span>
+            </button>
+        </div>
     </nav>
 
-    <!-- Modal Preço -->
-    <div id="modalPreco" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
-        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
-            <h2 id="tituloProduto" class="text-2xl font-black text-gray-900 mb-6">Qual o preço?</h2>
-            <input type="number" id="inputPrecoItem" class="w-full border border-gray-200 p-4 rounded-2xl mb-6 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00" step="0.01">
-            <div class="flex gap-3">
-                <button onclick="confirmarAdicao()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Confirmar</button>
-                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+    <!-- ================= TOASTS ================= -->
+    <div id="toastRoot" class="pointer-events-none fixed inset-x-0 z-[80] flex flex-col items-center gap-2 px-4" style="bottom: calc(84px + env(safe-area-inset-bottom));"></div>
+
+    <!-- ================= MODAL: ORÇAMENTO ================= -->
+    <div id="modalOrcamento" class="modal" onclick="if(event.target===this)fecharModal('modalOrcamento')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-ink">Definir orçamento</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-muted">Quanto você pretende gastar nesta compra?</p>
+                </div>
+                <button onclick="fecharModal('modalOrcamento')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+            <div class="mt-5">
+                <label class="field-label" for="orcamentoInput">Orçamento total (R$)</label>
+                <input id="orcamentoInput" type="text" inputmode="decimal" class="field num" placeholder="0,00">
+            </div>
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalOrcamento')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="salvarOrcamento()" class="btn btn-primary flex-1">Salvar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Nota -->
-    <div id="modalNota" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
-        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
-            <h2 class="text-2xl font-black text-gray-900 mb-6">📸 Ler Nota</h2>
-            <input type="file" id="fileNota" accept="image/*" class="w-full mb-4 p-3 border-2 border-dashed border-gray-300 rounded-2xl">
-            <textarea id="textNota" class="w-full border border-gray-200 rounded-2xl p-4 mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Ou cole o texto..." rows="4"></textarea>
-            <div class="flex gap-3">
-                <button onclick="processarNota()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Processar</button>
-                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+    <!-- ================= MODAL: PREÇO DO PRODUTO ESCANEADO ================= -->
+    <div id="modalPreco" class="modal" onclick="if(event.target===this)fecharModal('modalPreco')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Produto encontrado</p>
+                    <h2 id="tituloProduto" class="mt-1 text-lg font-semibold leading-snug text-ink">Produto</h2>
+                </div>
+                <button onclick="fecharModal('modalPreco')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-5 grid grid-cols-2 gap-3">
+                <div>
+                    <label class="field-label" for="inputPrecoItem">Preço (R$)</label>
+                    <input id="inputPrecoItem" type="text" inputmode="decimal" class="field num" placeholder="0,00" oninput="atualizarPrecoPreview()">
+                </div>
+                <div>
+                    <label class="field-label" for="inputQtdItem">Quantidade</label>
+                    <input id="inputQtdItem" type="number" min="1" step="1" value="1" class="field num" oninput="atualizarPrecoPreview()">
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between rounded-[14px] bg-surface px-4 py-3.5">
+                <span class="text-xs font-medium text-muted">Total do item</span>
+                <span class="num text-base font-bold text-ink">R$ <span id="precoTotalPreview">0,00</span></span>
+            </div>
+
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalPreco')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="confirmarAdicao()" class="btn btn-primary flex-1">Adicionar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Adicionar Manual -->
-    <div id="modalManual" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
-        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
-            <h2 class="text-2xl font-black text-gray-900 mb-6">Novo Produto</h2>
-            <div class="space-y-4">
+    <!-- ================= MODAL: ITEM (ADICIONAR / EDITAR) ================= -->
+    <div id="modalItem" class="modal" onclick="if(event.target===this)fecharModal('modalItem')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Produto</label>
-                    <input type="text" id="manualName" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Ex: Maçã">
+                    <h2 id="itemModalTitulo" class="text-lg font-semibold text-ink">Novo produto</h2>
+                    <p class="mt-1 text-xs text-muted">Preencha os dados do item da lista.</p>
                 </div>
+                <button onclick="fecharModal('modalItem')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-4">
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Tipo</label>
-                    <select id="manualType" onchange="toggleManualType()" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        <option value="un">Unidade</option>
-                        <option value="kg">Pesável (Kg)</option>
-                    </select>
+                    <label class="field-label" for="manualName">Produto</label>
+                    <input id="manualName" type="text" class="field" placeholder="Ex: Maçã" autocomplete="off">
                 </div>
-                <div id="fieldsUnidade">
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Preço (R$)</label>
-                    <input type="number" id="manualPrice" step="0.01" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00">
+
+                <div>
+                    <label class="field-label" for="manualCat">Categoria</label>
+                    <select id="manualCat" class="field"></select>
                 </div>
-                <div id="fieldsPesavel" class="hidden space-y-4">
+
+                <div>
+                    <span class="field-label">Tipo de venda</span>
+                    <div class="seg" role="group" aria-label="Tipo de venda">
+                        <button type="button" id="segUn" class="seg-btn seg-active" onclick="setTipoItem('un')">
+                            <i data-lucide="package" class="h-3.5 w-3.5"></i> Unidade
+                        </button>
+                        <button type="button" id="segKg" class="seg-btn" onclick="setTipoItem('kg')">
+                            <i data-lucide="scale" class="h-3.5 w-3.5"></i> Pesável (kg)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="fieldsUnidade" class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Preço/Kg (R$)</label>
-                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00" oninput="calcularPesavel()">
+                        <label class="field-label" for="manualPrice">Preço (R$)</label>
+                        <input id="manualPrice" type="text" inputmode="decimal" class="field num" placeholder="0,00" oninput="atualizarPreviewItem()">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Peso (kg ou g)</label>
-                        <input type="number" id="manualWeight" step="0.001" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.500">
+                        <label class="field-label" for="manualQty">Quantidade</label>
+                        <input id="manualQty" type="number" min="1" step="1" value="1" class="field num" oninput="atualizarPreviewItem()">
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-2xl">
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total</div>
-                        <div class="text-2xl font-black text-emerald-600">R$ <span id="manualCalculatedTotal">0.00</span></div>
+                </div>
+
+                <div id="fieldsPesavel" class="hidden grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label" for="manualPriceKg">Preço por kg (R$)</label>
+                        <input id="manualPriceKg" type="text" inputmode="decimal" class="field num" placeholder="0,00" oninput="atualizarPreviewItem()">
                     </div>
+                    <div>
+                        <label class="field-label" for="manualWeight">Peso (kg)</label>
+                        <input id="manualWeight" type="text" inputmode="decimal" class="field num" placeholder="0,500" oninput="atualizarPreviewItem()">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between rounded-[14px] bg-surface px-4 py-3.5">
+                    <span class="text-xs font-medium text-muted">Total estimado</span>
+                    <span class="num text-base font-bold text-ink">R$ <span id="manualCalculatedTotal">0,00</span></span>
                 </div>
             </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="adicionarManual()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Adicionar</button>
-                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalItem')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="salvarItem()" class="btn btn-primary flex-1">Salvar</button>
             </div>
         </div>
+    </div>
+
+    <!-- ================= MODAL: AÇÕES DO ITEM ================= -->
+    <div id="modalAcoes" class="modal" onclick="if(event.target===this)fecharModal('modalAcoes')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <h2 id="acoesNome" class="truncate text-base font-semibold text-ink">Item</h2>
+                    <p id="acoesMeta" class="mt-1 text-xs text-muted"></p>
+                </div>
+                <button onclick="fecharModal('modalAcoes')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+            <div class="mt-5 space-y-2">
+                <button onclick="acaoEditar()" class="btn btn-secondary w-full justify-start px-4">
+                    <i data-lucide="pencil" class="h-4 w-4 text-muted"></i> Editar item
+                </button>
+                <button onclick="acaoExcluir()" class="btn w-full justify-start px-4 text-danger" style="background:#FEF2F2;">
+                    <i data-lucide="trash-2" class="h-4 w-4"></i> Excluir item
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: ESTOQUE ================= -->
+    <div id="modalEstoque" class="modal" onclick="if(event.target===this)fecharModal('modalEstoque')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-ink">Novo item no estoque</h2>
+                    <p class="mt-1 text-xs text-muted">Registre o que você tem em casa.</p>
+                </div>
+                <button onclick="fecharModal('modalEstoque')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-4">
+                <div>
+                    <label class="field-label" for="estoqueName">Produto</label>
+                    <input id="estoqueName" type="text" class="field" placeholder="Ex: Arroz" autocomplete="off">
+                </div>
+                <div>
+                    <label class="field-label" for="estoqueCat">Categoria</label>
+                    <select id="estoqueCat" class="field"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label" for="estoqueQty">Quantidade</label>
+                        <input id="estoqueQty" type="text" inputmode="decimal" class="field num" value="1" placeholder="1">
+                    </div>
+                    <div>
+                        <label class="field-label" for="estoqueUnit">Unidade</label>
+                        <select id="estoqueUnit" class="field">
+                            <option value="un">un</option>
+                            <option value="kg">kg</option>
+                            <option value="g">g</option>
+                            <option value="L">L</option>
+                            <option value="ml">ml</option>
+                            <option value="pacote">pacote</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalEstoque')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="salvarEstoqueItem()" class="btn btn-primary flex-1">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: NOTA FISCAL ================= -->
+    <div id="modalNota" class="modal" onclick="if(event.target===this)fecharModal('modalNota')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-ink">Importar nota fiscal</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-muted">Envie uma foto ou cole o texto da nota para abastecer o estoque.</p>
+                </div>
+                <button onclick="fecharModal('modalNota')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-4">
+                <label class="flex cursor-pointer items-center gap-3 rounded-[14px] border border-dashed border-slate-300 bg-surface px-4 py-3.5 text-sm text-muted transition hover:border-brand-500">
+                    <i data-lucide="image" class="h-5 w-5 shrink-0 text-slate-400"></i>
+                    <span id="notaFileName" class="truncate">Selecionar foto da nota</span>
+                    <input type="file" id="fileNota" accept="image/*" class="hidden"
+                           onchange="document.getElementById('notaFileName').textContent=this.files[0]?.name||'Selecionar foto da nota'">
+                </label>
+
+                <div>
+                    <label class="field-label" for="textNota">Ou cole o texto</label>
+                    <textarea id="textNota" rows="4" class="field" placeholder="Cole aqui o texto da nota fiscal..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalNota')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button id="btnProcessarNota" onclick="processarNota()" class="btn btn-primary flex-1">
+                    <i data-lucide="sparkles" class="h-4 w-4"></i> Processar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: CONFIRMAÇÃO ================= -->
+    <div id="modalConfirm" class="modal" onclick="if(event.target===this)fecharModal('modalConfirm')">
+        <div class="sheet">
+            <div class="flex items-start gap-3">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-50 text-warn">
+                    <i data-lucide="alert-triangle" class="h-5 w-5"></i>
+                </span>
+                <div class="min-w-0">
+                    <h2 id="confirmTitulo" class="text-base font-semibold text-ink">Confirmar</h2>
+                    <p id="confirmTexto" class="mt-1 whitespace-pre-line text-sm leading-relaxed text-muted"></p>
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button onclick="fecharModal('modalConfirm')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button id="confirmBtn" onclick="executarConfirm()" class="btn btn-primary flex-1">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: RECEITA ================= -->
+    <div id="modalReceita" class="modal" onclick="if(event.target===this)fecharModal('modalReceita')">
+        <div class="sheet" id="receitaConteudo"></div>
     </div>
 
     <script>
-        let state = JSON.parse(localStorage.getItem('appState')) || { budget: 200, items: [], estoque: [], historico: [] };
+        /* =====================================================================
+           ESTADO E UTILITÁRIOS
+        ===================================================================== */
+        const STORAGE_KEY = 'appState';
+        const CATEGORIAS = ['Hortifruti', 'Carnes e peixes', 'Padaria', 'Mercearia', 'Bebidas', 'Laticínios', 'Congelados', 'Limpeza', 'Higiene', 'Outros'];
 
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.tab === tabId);
+        const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+        const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+        ));
+
+        const money = (value) => (Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const qtyFmt = (value) => (Number(value) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+        const num = (value) => {
+            if (typeof value === 'number') return isFinite(value) ? value : 0;
+            let s = String(value ?? '').trim().replace(/[^\d.,-]/g, '');
+            if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+            const n = parseFloat(s);
+            return isFinite(n) ? n : 0;
+        };
+
+        const norm = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+        const cap = (text) => text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+
+        const catName = (cat) => {
+            let s = String(cat || 'Outros').replace(/^en\s*:?\s*/i, '').replace(/[-_]/g, ' ').trim();
+            if (!s) s = 'Outros';
+            return cap(s);
+        };
+
+        const itemTotal = (item) => (Number(item.price) || 0) * (Number(item.qty) || 1);
+
+        const parseDateBR = (dateStr) => {
+            const parts = String(dateStr || '').split('/').map(Number);
+            if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+                return new Date(parts[2], parts[1] - 1, parts[0], 12).getTime();
+            }
+            return Date.now();
+        };
+
+        const monthKey = (ts) => {
+            const d = new Date(Number(ts) || Date.now());
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        };
+
+        /* =====================================================================
+           PERSISTÊNCIA
+        ===================================================================== */
+        function loadState() {
+            const base = { budget: 200, items: [], estoque: [], historico: [] };
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { saved = null; }
+
+            const s = (saved && typeof saved === 'object') ? { ...base, ...saved } : base;
+
+            s.budget = Number(s.budget) || 0;
+
+            s.items = Array.isArray(s.items) ? s.items.map((i) => ({
+                id: i.id || uid(),
+                name: i.name || 'Produto',
+                cat: catName(i.cat),
+                qty: Number(i.qty) || 1,
+                unit: i.unit || 'un',
+                price: Number(i.price) || 0,
+                checked: !!i.checked
+            })) : [];
+
+            s.estoque = Array.isArray(s.estoque) ? s.estoque.map((e) => ({
+                id: e.id || uid(),
+                name: e.name || 'Item',
+                cat: catName(e.cat),
+                qty: e.qty === 0 ? 0 : (Number(e.qty) || 1),
+                unit: e.unit || 'un'
+            })) : [];
+
+            s.historico = Array.isArray(s.historico) ? s.historico.map((h) => ({
+                ...h,
+                ts: Number(h.ts) || parseDateBR(h.date),
+                totalSpent: Number(h.totalSpent) || 0,
+                totalPlanned: Number(h.totalPlanned) || 0,
+                itemsCount: Number(h.itemsCount) || (Array.isArray(h.items) ? h.items.length : 0),
+                items: Array.isArray(h.items) ? h.items : []
+            })) : [];
+
+            return s;
+        }
+
+        let state = loadState();
+
+        function save() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            render();
+        }
+
+        /* =====================================================================
+           UI BASE: ícones, tabs, toasts e modais
+        ===================================================================== */
+        function refreshIcons() {
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                lucide.createIcons({ attrs: { 'stroke-width': 1.8, 'aria-hidden': 'true' } });
+            }
+        }
+
+        const TAB_META = {
+            lista: { title: 'Minhas compras', sub: () => cap(new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })) },
+            estoque: { title: 'Meu estoque', sub: () => 'Controle da despensa' },
+            receitas: { title: 'Receitas', sub: () => 'Ideias com o que você já tem' },
+            relatorio: { title: 'Gastos', sub: () => 'Resumo das suas compras' }
+        };
+
+        let activeTab = 'lista';
+
+        function showTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-content').forEach((el) => el.classList.add('hidden'));
+            const section = document.getElementById(tab);
+            if (section) section.classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
             });
-            if(tabId === 'relatorio') renderHistorico();
+
+            const meta = TAB_META[tab] || TAB_META.lista;
+            document.getElementById('headerTitle').textContent = meta.title;
+            document.getElementById('headerSub').textContent = meta.sub();
+
+            if (tab === 'receitas') renderReceitas();
+            if (tab === 'relatorio') renderGastos();
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function save() { localStorage.setItem('appState', JSON.stringify(state)); render(); renderHistorico(); }
+        function toast(message, type = 'success') {
+            const root = document.getElementById('toastRoot');
+            if (!root) return;
 
-        function toast(msg, type = 'success') {
-            const colors = { success: 'from-green-400 to-emerald-500', error: 'from-red-400 to-pink-500', info: 'from-amber-400 to-orange-500' };
-            const t = document.createElement('div');
-            t.className = `fixed bottom-28 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl z-[70] text-sm font-bold max-w-[90%] text-center`;
-            t.innerText = msg;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2500);
-        }
-        
-        
-        function updateBudget() {
-            state.budget = parseFloat(document.getElementById('inputBudget').value);
-            save();
+            const config = {
+                success: { icon: 'check-circle-2', bg: 'bg-brand-50', text: 'text-brand-600', ring: 'ring-brand-600/15' },
+                error: { icon: 'alert-circle', bg: 'bg-red-50', text: 'text-danger', ring: 'ring-red-600/15' },
+                info: { icon: 'info', bg: 'bg-amber-50', text: 'text-warn', ring: 'ring-amber-500/20' }
+            }[type] || { icon: 'info', bg: 'bg-surface', text: 'text-muted', ring: 'ring-slate-200' };
+
+            const el = document.createElement('div');
+            el.className = `toast-in pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-[14px] border border-line bg-white px-4 py-3 shadow-card ring-1 ${config.ring}`;
+            el.setAttribute('role', 'status');
+            el.innerHTML = `
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full ${config.bg} ${config.text}">
+                    <i data-lucide="${config.icon}" class="h-4 w-4"></i>
+                </span>
+                <p class="text-sm font-medium leading-snug text-ink">${esc(message)}</p>
+            `;
+            root.appendChild(el);
+            refreshIcons();
+
+            setTimeout(() => {
+                el.style.transition = 'opacity .2s ease, transform .2s ease';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(6px)';
+                setTimeout(() => el.remove(), 200);
+            }, 2800);
         }
 
+        function abrirModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('open');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function fecharModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('open');
+            if (!document.querySelector('.modal.open') && !document.getElementById('tempScanner')) {
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('.modal.open').forEach((m) => fecharModal(m.id));
+        });
+
+        /* =====================================================================
+           CONFIRMAÇÃO
+        ===================================================================== */
+        let confirmCallback = null;
+
+        function abrirConfirm({ titulo = 'Confirmar', texto = '', ok = 'Confirmar', perigo = false, onOk = null }) {
+            document.getElementById('confirmTitulo').textContent = titulo;
+            document.getElementById('confirmTexto').textContent = texto;
+            const btn = document.getElementById('confirmBtn');
+            btn.textContent = ok;
+            btn.className = 'btn flex-1 ' + (perigo ? 'btn-danger' : 'btn-primary');
+            confirmCallback = onOk;
+            abrirModal('modalConfirm');
+        }
+
+        function executarConfirm() {
+            const cb = confirmCallback;
+            confirmCallback = null;
+            fecharModal('modalConfirm');
+            if (typeof cb === 'function') cb();
+        }
+
+        /* =====================================================================
+           RENDERIZAÇÃO GERAL
+        ===================================================================== */
         function render() {
-            // Orçamento
-            const total = state.items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
-            const saldo = (state.budget || 0) - total;
-            const pct = state.budget > 0 ? Math.min(100, (total / state.budget) * 100) : 0;
-            const saldoEl = document.getElementById('displaySaldo');
+            renderLista();
+            renderEstoque();
+            renderReceitas();
+            renderGastos();
+            renderListaContagem();
+            refreshIcons();
+        }
+
+        function renderListaContagem() {
+            const el = document.getElementById('listaContagem');
+            if (!el) return;
+            const count = state.items.length;
+            el.textContent = `${count} ${count === 1 ? 'item' : 'itens'}`;
+        }
+
+        /* =====================================================================
+           LISTA DE COMPRAS
+        ===================================================================== */
+        function renderLista() {
+            const items = state.items;
+            const total = items.reduce((sum, i) => sum + itemTotal(i), 0);
+            const checked = items.filter((i) => i.checked);
+            const checkedTotal = checked.reduce((sum, i) => sum + itemTotal(i), 0);
+            const budget = Number(state.budget) || 0;
+            const saldo = budget - total;
+            const rawPct = budget > 0 ? (total / budget) * 100 : (total > 0 ? 100 : 0);
+            const pct = Math.max(0, Math.min(100, rawPct));
+
+            const saldoEl = document.getElementById('saldoValor');
             if (saldoEl) {
-                saldoEl.innerText = saldo.toFixed(2);
-                saldoEl.className = `text-3xl font-bold ${saldo < 0 ? 'text-red-300' : 'text-white'}`;
+                saldoEl.textContent = money(saldo);
+                saldoEl.className = `num text-[32px] font-bold leading-none tracking-tight ${saldo < 0 ? 'text-red-400' : 'text-brand-400'}`;
             }
-            const barEl = document.getElementById('budgetBar');
-            if (barEl) {
-                barEl.style.width = pct + '%';
-                if (pct > 90) barEl.style.backgroundColor = '#ef4444';
-                else if (pct > 70) barEl.style.backgroundColor = '#f59e0b';
-                else barEl.style.backgroundColor = '#10b981';
+
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
+            setText('statOrcamento', `R$ ${money(budget)}`);
+            setText('statGasto', `R$ ${money(total)}`);
+            setText('budgetPct', `${Math.round(rawPct)}%`);
+
+            const bar = document.getElementById('budgetBar');
+            if (bar) {
+                bar.style.width = `${pct}%`;
+                bar.style.background = rawPct >= 100 ? '#DC2626' : rawPct >= 70 ? '#F59E0B' : '#10B981';
             }
-            if (document.getElementById('inputBudget')) document.getElementById('inputBudget').value = state.budget;
+
+            const hint = document.getElementById('barHint');
+            if (hint) {
+                if (budget <= 0) hint.textContent = 'Defina um orçamento para acompanhar';
+                else if (rawPct >= 100) hint.textContent = 'Orçamento excedido';
+                else if (rawPct >= 70) hint.textContent = 'Atenção ao limite do orçamento';
+                else hint.textContent = 'Dentro do orçamento';
+                hint.className = `truncate text-[11px] font-medium ${rawPct >= 100 ? 'text-red-300' : rawPct >= 70 ? 'text-amber-300' : 'text-slate-400'}`;
+            }
 
             const container = document.getElementById('items-container');
-            if(container) {
-                if (state.items.length === 0) {
-                    container.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">🛒</div>Sua lista está vazia.<br>Use os botões acima para começar!</div>';
+            if (container) {
+                if (items.length === 0) {
+                    container.innerHTML = emptyListaHTML();
                 } else {
-                    container.innerHTML = state.items.map(item => `
-                        <div class="flex items-center p-4 bg-white border border-gray-100 rounded-3xl shadow-sm animate-item">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-4 h-5 w-5 rounded-md border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                            <div class="flex-grow">
-                                <div class="font-bold text-gray-800 ${item.checked ? 'line-through text-gray-300' : ''}">${item.name}</div>
-                                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">${item.qty || 1} ${item.unit || 'un'}</div>
+                    const groups = new Map();
+                    items.forEach((item) => {
+                        const key = catName(item.cat);
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(item);
+                    });
+
+                    const ordered = Array.from(groups.entries()).sort((a, b) => {
+                        if (a[0] === 'Outros') return 1;
+                        if (b[0] === 'Outros') return -1;
+                        return a[0].localeCompare(b[0], 'pt-BR');
+                    });
+
+                    container.innerHTML = ordered.map(([cat, list]) => {
+                        const subtotal = list.reduce((sum, i) => sum + itemTotal(i), 0);
+                        return `
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between gap-3 px-0.5">
+                                    <span class="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">${esc(cat)}</span>
+                                    <span class="num shrink-0 text-[11px] font-medium text-slate-400">R$ ${money(subtotal)}</span>
+                                </div>
+                                ${list.map(itemRowHTML).join('')}
                             </div>
-                            <div class="font-black text-gray-900">R$ ${(item.price || 0).toFixed(2)}</div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             }
-            
-            const eContainer = document.getElementById('estoque-container');
-            if(eContainer) {
-                if (state.estoque.length === 0) {
-                    eContainer.innerHTML = '<div class="p-12 text-center text-gray-300"><div class="text-5xl mb-3">📦</div>Seu estoque está vazio.</div>';
-                } else {
-                    eContainer.innerHTML = state.estoque.map((i, idx) => `
-                        <div class="p-4 bg-white border border-gray-100 rounded-3xl shadow-sm animate-item">
-                            <div class="font-bold text-gray-800">${i.name}</div>
-                            ${i.qty ? `<div class="text-[11px] font-bold text-gray-400 uppercase tracking-tighter mt-1">${i.qty}${i.unit || ''}</div>` : ''}
-                        </div>
-                    `).join('');
-                }
+
+            const btn = document.getElementById('btnFinalizar');
+            if (btn) {
+                btn.disabled = checked.length === 0;
+                btn.className = `btn mt-6 w-full ${checked.length === 0 ? 'cursor-not-allowed bg-slate-200 text-slate-400' : 'btn-ink shadow-card'}`;
+                btn.innerHTML = `
+                    <i data-lucide="check-check" class="h-[18px] w-[18px]"></i>
+                    <span>${checked.length === 0 ? 'Finalizar compra' : `Finalizar compra · R$ ${money(checkedTotal)}`}</span>
+                `;
             }
         }
 
-        let tempProduct = null;
+        function itemRowHTML(item) {
+            const total = itemTotal(item);
+            const checked = !!item.checked;
+            const meta = item.unit === 'kg'
+                ? `${qtyFmt(item.qty)} kg × R$ ${money(item.price)}/kg`
+                : `${qtyFmt(item.qty)} ${esc(item.unit || 'un')} × R$ ${money(item.price)}`;
 
+            return `
+                <div data-item-id="${esc(item.id)}" class="flex items-center gap-3 rounded-[14px] border border-line bg-white px-3.5 py-3 shadow-card">
+                    <button onclick="toggleItem('${esc(item.id)}')" aria-pressed="${checked}" aria-label="${checked ? 'Desmarcar' : 'Marcar'} ${esc(item.name)}"
+                        class="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition active:scale-90 ${checked ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 bg-white text-transparent hover:border-brand-500'}">
+                        <i data-lucide="check" class="h-3.5 w-3.5"></i>
+                    </button>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium ${checked ? 'text-slate-400 line-through' : 'text-ink'}">${esc(item.name)}</p>
+                        <p class="num mt-0.5 truncate text-[11px] text-muted">${meta}</p>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <p class="num text-sm font-semibold ${checked ? 'text-slate-400' : 'text-ink'}">R$ ${money(total)}</p>
+                    </div>
+                    <button onclick="abrirAcoesItem('${esc(item.id)}')" class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-surface active:scale-90" aria-label="Opções de ${esc(item.name)}">
+                        <i data-lucide="more-vertical" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function emptyListaHTML() {
+            return `
+                <div class="flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-9 text-center">
+                    <svg width="104" height="96" viewBox="0 0 104 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="52" cy="50" r="34" fill="#ECFDF5"/>
+                        <path d="M30 40h44l-4.8 30.4A7 7 0 0 1 62.3 77H41.7a7 7 0 0 1-6.9-6.6L30 40Z" fill="#FFFFFF" stroke="#059669" stroke-width="2.4" stroke-linejoin="round"/>
+                        <path d="M40 40c0-7.2 5.4-13 12-13s12 5.8 12 13" stroke="#059669" stroke-width="2.4" stroke-linecap="round"/>
+                        <path d="M43 51v14M52 51v14M61 51v14" stroke="#A7F3D0" stroke-width="2.4" stroke-linecap="round"/>
+                        <circle cx="79" cy="31" r="4" fill="#10B981"/>
+                        <circle cx="25" cy="63" r="3" fill="#6EE7B7"/>
+                    </svg>
+                    <h3 class="mt-4 text-base font-semibold text-ink">Sua lista está vazia</h3>
+                    <p class="mt-1 max-w-[240px] text-xs leading-relaxed text-muted">Adicione seus produtos e acompanhe seus gastos em tempo real.</p>
+                    <button onclick="abrirItemModal()" class="btn btn-primary mt-5 px-5">
+                        <i data-lucide="plus" class="h-4 w-4"></i> Adicionar primeiro produto
+                    </button>
+                </div>
+            `;
+        }
+
+        /* =====================================================================
+           ORÇAMENTO
+        ===================================================================== */
+        function abrirOrcamento() {
+            const input = document.getElementById('orcamentoInput');
+            input.value = state.budget ? money(state.budget) : '';
+            abrirModal('modalOrcamento');
+            setTimeout(() => { input.focus(); input.select(); }, 150);
+        }
+
+        function salvarOrcamento() {
+            const value = num(document.getElementById('orcamentoInput').value);
+            if (value < 0) return toast('Informe um orçamento válido.', 'error');
+            state.budget = value;
+            fecharModal('modalOrcamento');
+            save();
+            toast('Orçamento atualizado.');
+        }
+
+        /* =====================================================================
+           ITENS: marcar, editar e excluir
+        ===================================================================== */
         function toggleItem(id) {
-            const item = state.items.find(i => i.id === id);
-            if (item) item.checked = !item.checked;
+            const item = state.items.find((i) => i.id === id);
+            if (!item) return;
+            item.checked = !item.checked;
             save();
         }
 
+        let editandoItemId = null;
+        let tipoItem = 'un';
+
+        function abrirItemModal(id = null) {
+            editandoItemId = id || null;
+            const item = id ? state.items.find((i) => i.id === id) : null;
+
+            document.getElementById('itemModalTitulo').textContent = item ? 'Editar item' : 'Novo produto';
+
+            const catSelect = document.getElementById('manualCat');
+            const cats = Array.from(new Set([...CATEGORIAS, ...state.items.map((i) => catName(i.cat))]));
+            catSelect.innerHTML = cats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+            document.getElementById('manualName').value = item ? item.name : '';
+            catSelect.value = item ? catName(item.cat) : 'Outros';
+
+            setTipoItem(item && item.unit === 'kg' ? 'kg' : 'un', true);
+
+            document.getElementById('manualPrice').value = item && item.unit !== 'kg' && item.price ? money(item.price) : '';
+            document.getElementById('manualQty').value = item && item.unit !== 'kg' ? (item.qty || 1) : 1;
+
+            document.getElementById('manualPriceKg').value = item && item.unit === 'kg' && item.price ? money(item.price) : '';
+            document.getElementById('manualWeight').value = item && item.unit === 'kg' ? qtyFmt(item.qty) : '';
+
+            atualizarPreviewItem();
+            abrirModal('modalItem');
+            setTimeout(() => document.getElementById('manualName').focus(), 150);
+        }
+
+        function setTipoItem(tipo, silencioso = false) {
+            tipoItem = tipo;
+            const segUn = document.getElementById('segUn');
+            const segKg = document.getElementById('segKg');
+            if (segUn) segUn.classList.toggle('seg-active', tipo === 'un');
+            if (segKg) segKg.classList.toggle('seg-active', tipo === 'kg');
+
+            const fUn = document.getElementById('fieldsUnidade');
+            const fKg = document.getElementById('fieldsPesavel');
+            if (fUn) fUn.classList.toggle('hidden', tipo === 'kg');
+            if (fKg) fKg.classList.toggle('hidden', tipo !== 'kg');
+
+            if (!silencioso) atualizarPreviewItem();
+        }
+
+        function calcularPesavel() {
+            const priceKg = num(document.getElementById('manualPriceKg').value);
+            let weight = num(document.getElementById('manualWeight').value);
+            // Heurística: valores acima de 10 são interpretados como gramas
+            if (weight > 10) weight = weight / 1000;
+            return { price: priceKg, qty: weight, total: priceKg * weight };
+        }
+
+        function atualizarPreviewItem() {
+            const target = document.getElementById('manualCalculatedTotal');
+            if (!target) return;
+
+            let total = 0;
+            if (tipoItem === 'un') {
+                total = num(document.getElementById('manualPrice').value) * Math.max(1, num(document.getElementById('manualQty').value) || 1);
+            } else {
+                total = calcularPesavel().total;
+            }
+            target.textContent = money(total);
+        }
+
+        function salvarItem() {
+            const name = document.getElementById('manualName').value.trim();
+            const cat = document.getElementById('manualCat').value || 'Outros';
+
+            if (!name) return toast('Informe o nome do produto.', 'error');
+
+            let price = 0;
+            let qty = 1;
+            let unit = 'un';
+
+            if (tipoItem === 'kg') {
+                const calc = calcularPesavel();
+                price = calc.price;
+                qty = calc.qty;
+                unit = 'kg';
+                if (!(price > 0)) return toast('Informe o preço por kg.', 'error');
+                if (!(qty > 0)) return toast('Informe o peso do produto.', 'error');
+            } else {
+                price = num(document.getElementById('manualPrice').value);
+                qty = Math.max(1, num(document.getElementById('manualQty').value) || 1);
+                if (!(price > 0)) return toast('Informe o preço do produto.', 'error');
+            }
+
+            if (editandoItemId) {
+                const item = state.items.find((i) => i.id === editandoItemId);
+                if (item) {
+                    Object.assign(item, { name, cat: catName(cat), price, qty, unit });
+                }
+                toast('Item atualizado.');
+            } else {
+                state.items.push({ id: uid(), name, cat: catName(cat), price, qty, unit, checked: false });
+                toast('Produto adicionado à lista.');
+            }
+
+            fecharModal('modalItem');
+            save();
+        }
+
+        let acaoItemId = null;
+
+        function abrirAcoesItem(id) {
+            const item = state.items.find((i) => i.id === id);
+            if (!item) return;
+            acaoItemId = id;
+            document.getElementById('acoesNome').textContent = item.name;
+            document.getElementById('acoesMeta').textContent = item.unit === 'kg'
+                ? `${qtyFmt(item.qty)} kg · R$ ${money(item.price)}/kg`
+                : `${qtyFmt(item.qty)} ${item.unit || 'un'} · R$ ${money(item.price)} cada`;
+            abrirModal('modalAcoes');
+        }
+
+        function acaoEditar() {
+            const id = acaoItemId;
+            fecharModal('modalAcoes');
+            if (id) abrirItemModal(id);
+        }
+
+        function acaoExcluir() {
+            const id = acaoItemId;
+            const item = state.items.find((i) => i.id === id);
+            fecharModal('modalAcoes');
+            if (!item) return;
+            abrirConfirm({
+                titulo: 'Excluir item',
+                texto: `Remover "${item.name}" da lista de compras?`,
+                ok: 'Excluir',
+                perigo: true,
+                onOk: () => removerItem(id)
+            });
+        }
+
+        function removerItem(id) {
+            const el = document.querySelector(`[data-item-id="${id}"]`);
+            if (el) el.classList.add('item-out');
+            setTimeout(() => {
+                state.items = state.items.filter((i) => i.id !== id);
+                save();
+                toast('Item removido.', 'info');
+            }, 170);
+        }
+
+        /* =====================================================================
+           FINALIZAR COMPRA
+        ===================================================================== */
+        function finalizarCompra() {
+            const checked = state.items.filter((i) => i.checked);
+            if (checked.length === 0) {
+                return toast('Marque ao menos um item como comprado.', 'error');
+            }
+
+            const total = checked.reduce((sum, i) => sum + itemTotal(i), 0);
+            abrirConfirm({
+                titulo: 'Finalizar compra',
+                texto: `${checked.length} ${checked.length === 1 ? 'item' : 'itens'} · R$ ${money(total)}\nOs itens serão registrados em Gastos e removidos da lista.`,
+                ok: 'Finalizar',
+                onOk: () => registrarCompra(checked, total)
+            });
+        }
+
+        function registrarCompra(checked, total) {
+            state.historico.push({
+                id: uid(),
+                ts: Date.now(),
+                date: new Date().toLocaleDateString('pt-BR'),
+                totalPlanned: Number(state.budget) || 0,
+                totalSpent: total,
+                itemsCount: checked.length,
+                items: checked.map((i) => ({
+                    name: i.name,
+                    cat: catName(i.cat),
+                    qty: i.qty,
+                    unit: i.unit,
+                    price: i.price
+                }))
+            });
+
+            state.items = state.items.filter((i) => !i.checked);
+            save();
+            toast('Compra registrada com sucesso.');
+            showTab('relatorio');
+        }
+
+        /* =====================================================================
+           SCANNER DE CÓDIGO DE BARRAS
+        ===================================================================== */
         let html5Scanner = null;
+        let tempProduct = null;
 
         async function openScanner() {
-            // Evita abrir duas instâncias
             if (document.getElementById('tempScanner')) return;
 
             const modal = document.createElement('div');
             modal.id = 'tempScanner';
-            modal.className = 'fixed inset-0 bg-black z-[60] flex flex-col';
+            modal.className = 'fixed inset-0 z-[60] flex flex-col bg-ink';
             modal.innerHTML = `
-                <div class="p-4 text-white text-center bg-gray-900 flex justify-between items-center">
-                    <div>
-                        <div class="font-bold text-lg">Escanear Produto</div>
-                        <div class="text-xs text-gray-400 mt-0.5">Aponte a câmera para o código de barras</div>
+                <div class="flex items-center justify-between gap-3 px-5 pb-4" style="padding-top:max(1.25rem, env(safe-area-inset-top));">
+                    <div class="min-w-0">
+                        <p class="text-base font-semibold text-white">Escanear produto</p>
+                        <p class="mt-0.5 text-xs text-slate-400">Aponte a câmera para o código de barras</p>
                     </div>
-                    <button onclick="fecharScanner()" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded-xl text-sm font-bold">✕</button>
+                    <button onclick="fecharScanner()" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white active:scale-95" aria-label="Fechar scanner">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
                 </div>
-                <div id="reader" class="flex-grow flex items-center justify-center bg-black overflow-hidden relative"></div>
-                <div class="p-4 bg-gray-900 border-t border-gray-800 flex flex-col gap-2">
-                    <div class="text-xs text-gray-400 text-center">Câmera não abriu ou sem leitor? Digite o EAN (código de barras):</div>
-                    <div class="flex gap-2">
-                        <input type="text" id="manualEanInput" class="flex-1 bg-gray-800 text-white border border-gray-700 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-emerald-500" placeholder="Ex: 7891000100103">
-                        <button onclick="simularEanManual()" class="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold text-sm">Buscar</button>
+
+                <div class="relative flex-1 overflow-hidden bg-black">
+                    <div id="reader" class="h-full w-full"></div>
+                    <div id="scannerLoading" class="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                        <span class="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-xs font-medium text-white backdrop-blur">
+                            <i data-lucide="loader-2" class="h-3.5 w-3.5 animate-spin"></i> Iniciando câmera...
+                        </span>
+                    </div>
+                </div>
+
+                <div class="px-5 pt-4" style="padding-bottom:max(1.25rem, env(safe-area-inset-bottom));">
+                    <p class="text-center text-[11px] text-slate-400">Câmera indisponível? Digite o código de barras.</p>
+                    <div class="mt-2 flex gap-2">
+                        <input id="manualEanInput" inputmode="numeric" class="h-12 min-w-0 flex-1 rounded-[14px] border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none" placeholder="Ex: 7891000100103">
+                        <button onclick="simularEanManual()" class="h-12 shrink-0 rounded-[14px] bg-brand-600 px-5 text-sm font-semibold text-white active:scale-95">Buscar</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            document.body.classList.add('overflow-hidden');
+            refreshIcons();
 
             try {
-                html5Scanner = new Html5Qrcode("reader");
+                html5Scanner = new Html5Qrcode('reader');
 
                 const config = {
                     fps: 15,
@@ -317,11 +1266,11 @@
                     config.formatsToSupport = [
                         F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
                         F.CODE_128, F.CODE_39, F.ITF, F.QR_CODE
-                    ].filter(v => v !== undefined);
+                    ].filter((v) => v !== undefined);
                 }
 
                 await html5Scanner.start(
-                    { facingMode: "environment" },
+                    { facingMode: 'environment' },
                     config,
                     (text) => {
                         fecharScanner(true);
@@ -329,248 +1278,912 @@
                     },
                     () => {}
                 );
+
+                document.getElementById('scannerLoading')?.remove();
             } catch (err) {
                 console.error('Erro ao iniciar câmera:', err);
-                // Não fechamos o modal imediatamente para permitir digitar o EAN manual se a câmera falhar
+                document.getElementById('scannerLoading')?.remove();
                 const readerEl = document.getElementById('reader');
                 if (readerEl) {
                     readerEl.innerHTML = `
-                        <div class="text-center p-6 text-gray-400">
-                            <div class="text-4xl mb-2">📷⚠️</div>
-                            <div class="text-sm font-bold text-white mb-1">Câmera indisponível ou bloqueada</div>
-                            <div class="text-xs">Use o campo abaixo para digitar o código de barras.</div>
+                        <div class="flex h-full flex-col items-center justify-center px-6 text-center">
+                            <span class="grid h-14 w-14 place-items-center rounded-full bg-white/10 text-slate-300">
+                                <i data-lucide="camera-off" class="h-6 w-6"></i>
+                            </span>
+                            <p class="mt-3 text-sm font-semibold text-white">Câmera indisponível</p>
+                            <p class="mt-1 max-w-[240px] text-xs leading-relaxed text-slate-400">Verifique a permissão do navegador ou use o campo abaixo para digitar o código.</p>
                         </div>
                     `;
+                    refreshIcons();
                 }
             }
         }
 
         function simularEanManual() {
-            const val = document.getElementById('manualEanInput').value.trim();
-            if (!val) return toast('Digite o código de barras', 'error');
+            const input = document.getElementById('manualEanInput');
+            const value = (input?.value || '').trim();
+            if (!/^\d{8,14}$/.test(value)) return toast('Digite um código de barras válido.', 'error');
             fecharScanner(true);
-            buscarProduto(val);
+            buscarProduto(value);
         }
 
-        async function fecharScanner(silencioso = false) {
+        async function fecharScanner() {
             try {
                 if (html5Scanner) {
                     await html5Scanner.stop();
                     await html5Scanner.clear();
                 }
-            } catch (e) { /* ignorar */ }
+            } catch (e) { /* ignora */ }
             html5Scanner = null;
-            const modal = document.getElementById('tempScanner');
-            if (modal) modal.remove();
+            document.getElementById('tempScanner')?.remove();
+            if (!document.querySelector('.modal.open')) document.body.classList.remove('overflow-hidden');
         }
 
         async function buscarProduto(ean) {
+            toast('Buscando produto...', 'info');
             try {
-                const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json`);
+                const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(ean)}.json`);
                 const data = await res.json();
-                if (data.status === 1) {
+
+                if (data && data.status === 1 && data.product) {
                     tempProduct = {
-                        name: data.product.product_name || 'Produto sem nome',
-                        cat: data.product.categories_tags ? data.product.categories_tags[0].replace('en:', '') : 'Outros'
+                        name: data.product.product_name || data.product.generic_name || 'Produto sem nome',
+                        cat: data.product.categories_tags && data.product.categories_tags[0]
+                            ? catName(data.product.categories_tags[0])
+                            : 'Outros'
                     };
-                    document.getElementById('tituloProduto').innerText = tempProduct.name;
-                    document.getElementById('modalPreco').classList.remove('hidden');
-                    document.getElementById('inputPrecoItem').focus();
+
+                    document.getElementById('tituloProduto').textContent = tempProduct.name;
+                    document.getElementById('inputPrecoItem').value = '';
+                    document.getElementById('inputQtdItem').value = '1';
+                    document.getElementById('precoTotalPreview').textContent = '0,00';
+                    fecharModal('modalPreco');
+                    abrirModal('modalPreco');
+                    setTimeout(() => document.getElementById('inputPrecoItem').focus(), 150);
                 } else {
                     toast('Produto não encontrado.', 'error');
                 }
-            } catch (e) { toast('Erro na busca.', 'error'); }
+            } catch (e) {
+                toast('Não foi possível consultar o produto.', 'error');
+            }
+        }
+
+        function atualizarPrecoPreview() {
+            const price = num(document.getElementById('inputPrecoItem').value);
+            const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
+            const target = document.getElementById('precoTotalPreview');
+            if (target) target.textContent = money(price * qty);
         }
 
         function confirmarAdicao() {
-            const p = parseFloat(document.getElementById('inputPrecoItem').value);
-            if (!p || p <= 0) return toast("Digite o preço.", 'error');
-            state.items.push({ id: Date.now(), ...tempProduct, price: p, checked: true, qty: 1, unit: 'un' });
+            const price = num(document.getElementById('inputPrecoItem').value);
+            const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
+
+            if (!(price > 0)) return toast('Informe o preço do produto.', 'error');
+
+            state.items.push({
+                id: uid(),
+                name: tempProduct?.name || 'Produto',
+                cat: catName(tempProduct?.cat || 'Outros'),
+                price,
+                qty,
+                unit: 'un',
+                checked: true
+            });
+
+            fecharModal('modalPreco');
             save();
-            document.getElementById('modalPreco').classList.add('hidden');
-            document.getElementById('inputPrecoItem').value = '';
+            toast('Produto adicionado à lista.');
+        }
+
+        /* =====================================================================
+           ESTOQUE
+        ===================================================================== */
+        let buscaEstoque = '';
+        let filtroEstoque = 'todos';
+
+        function setFiltroEstoque(value) {
+            filtroEstoque = value;
+            renderEstoque();
+        }
+
+        function renderEstoque() {
+            const chipsEl = document.getElementById('estoqueChips');
+            const container = document.getElementById('estoque-container');
+            const avisoEl = document.getElementById('estoqueAviso');
+            const resumoEl = document.getElementById('estoqueResumo');
+            if (!container) return;
+
+            const categoriaSet = Array.from(new Set(state.estoque.map((e) => catName(e.cat))));
+            const chips = [
+                { id: 'todos', label: 'Todos' },
+                { id: 'baixo', label: 'Acabando' },
+                ...categoriaSet.slice(0, 5).map((c) => ({ id: `cat:${c}`, label: c }))
+            ];
+
+            if (chipsEl) {
+                chipsEl.innerHTML = chips.map((c) => {
+                    const active = filtroEstoque === c.id;
+                    return `<button onclick="setFiltroEstoque('${esc(c.id)}')" class="shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${active ? 'border-brand-600 bg-brand-600 text-white' : 'border-line bg-white text-muted hover:border-slate-300'}">${esc(c.label)}</button>`;
+                }).join('');
+            }
+
+            const baixos = state.estoque.filter((e) => Number(e.qty) <= 1);
+            if (avisoEl) {
+                if (baixos.length && filtroEstoque !== 'baixo') {
+                    avisoEl.innerHTML = `
+                        <div class="flex items-center gap-3 rounded-[14px] border border-amber-200 bg-amber-50 px-3.5 py-3">
+                            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-100 text-warn">
+                                <i data-lucide="alert-triangle" class="h-4 w-4"></i>
+                            </span>
+                            <p class="min-w-0 flex-1 text-xs font-medium leading-snug text-amber-800">${baixos.length} ${baixos.length === 1 ? 'item está acabando' : 'itens estão acabando'}.</p>
+                            <button onclick="setFiltroEstoque('baixo')" class="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">Ver</button>
+                        </div>
+                    `;
+                } else {
+                    avisoEl.innerHTML = '';
+                }
+                refreshIcons();
+            }
+
+            if (resumoEl) {
+                resumoEl.textContent = `${state.estoque.length} ${state.estoque.length === 1 ? 'item' : 'itens'} · ${baixos.length} acabando`;
+            }
+
+            const query = norm(buscaEstoque);
+            let list = state.estoque.filter((e) => !query || norm(e.name).includes(query));
+
+            if (filtroEstoque === 'baixo') {
+                list = list.filter((e) => Number(e.qty) <= 1);
+            } else if (filtroEstoque.startsWith('cat:')) {
+                const cat = filtroEstoque.slice(4);
+                list = list.filter((e) => catName(e.cat) === cat);
+            }
+
+            list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+            if (!list.length) {
+                container.innerHTML = state.estoque.length === 0 ? emptyEstoqueHTML() : `
+                    <div class="col-span-full flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-8 text-center sm:col-span-2">
+                        <span class="grid h-12 w-12 place-items-center rounded-full bg-surface text-slate-400">
+                            <i data-lucide="search" class="h-5 w-5"></i>
+                        </span>
+                        <p class="mt-3 text-sm font-semibold text-ink">Nenhum item encontrado</p>
+                        <p class="mt-1 text-xs text-muted">Tente outro termo ou limpe os filtros.</p>
+                        <button onclick="limparFiltrosEstoque()" class="btn btn-secondary mt-4 px-4">Limpar filtros</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = list.map(estoqueCardHTML).join('');
+            }
+            refreshIcons();
+        }
+
+        function limparFiltrosEstoque() {
+            buscaEstoque = '';
+            filtroEstoque = 'todos';
+            const input = document.getElementById('buscaEstoque');
+            if (input) input.value = '';
+            renderEstoque();
+        }
+
+        function estoqueCardHTML(item) {
+            const qty = Number(item.qty) || 0;
+            const acabou = qty <= 0;
+            const baixo = qty > 0 && qty <= 1;
+            const badge = acabou
+                ? '<span class="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-danger">Acabou</span>'
+                : baixo
+                    ? '<span class="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-warn">Acabando</span>'
+                    : '';
+
+            return `
+                <div class="rounded-[14px] border border-line bg-white p-4 shadow-card">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <p class="truncate text-sm font-semibold text-ink">${esc(item.name)}</p>
+                                ${badge}
+                            </div>
+                            <p class="mt-0.5 truncate text-[11px] text-muted">${esc(catName(item.cat))}</p>
+                        </div>
+                        <button onclick="pedirRemocaoEstoque('${esc(item.id)}')" class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-danger active:scale-90" aria-label="Excluir ${esc(item.name)}">
+                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="mt-3 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1 rounded-full border border-line p-1">
+                            <button onclick="ajustarEstoque('${esc(item.id)}', -1)" class="grid h-7 w-7 place-items-center rounded-full text-slate-500 transition hover:bg-surface active:scale-90" aria-label="Diminuir quantidade">
+                                <i data-lucide="minus" class="h-3.5 w-3.5"></i>
+                            </button>
+                            <span class="num min-w-[52px] text-center text-xs font-semibold text-ink">${qtyFmt(qty)} ${esc(item.unit || 'un')}</span>
+                            <button onclick="ajustarEstoque('${esc(item.id)}', 1)" class="grid h-7 w-7 place-items-center rounded-full text-slate-500 transition hover:bg-surface active:scale-90" aria-label="Aumentar quantidade">
+                                <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+                            </button>
+                        </div>
+                        <span class="text-[11px] font-medium ${acabou ? 'text-danger' : baixo ? 'text-warn' : 'text-muted'}">${acabou ? 'Repor' : baixo ? 'Repor em breve' : 'Disponível'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function emptyEstoqueHTML() {
+            return `
+                <div class="col-span-full flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-9 text-center sm:col-span-2">
+                    <span class="grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand-600">
+                        <i data-lucide="package" class="h-6 w-6"></i>
+                    </span>
+                    <h3 class="mt-4 text-base font-semibold text-ink">Seu estoque está vazio</h3>
+                    <p class="mt-1 max-w-[250px] text-xs leading-relaxed text-muted">Cadastre o que você tem em casa e receba alertas quando estiver acabando.</p>
+                    <button onclick="abrirEstoqueModal()" class="btn btn-primary mt-5 px-5">
+                        <i data-lucide="plus" class="h-4 w-4"></i> Adicionar item
+                    </button>
+                </div>
+            `;
+        }
+
+        function abrirEstoqueModal() {
+            const catSelect = document.getElementById('estoqueCat');
+            const cats = Array.from(new Set([...CATEGORIAS, ...state.estoque.map((e) => catName(e.cat))]));
+            catSelect.innerHTML = cats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+            document.getElementById('estoqueName').value = '';
+            document.getElementById('estoqueQty').value = '1';
+            document.getElementById('estoqueUnit').value = 'un';
+            abrirModal('modalEstoque');
+            setTimeout(() => document.getElementById('estoqueName').focus(), 150);
+        }
+
+        function adicionarEstoqueInterno({ name, qty = 1, unit = 'un', cat = 'Outros' }) {
+            const existente = state.estoque.find((e) => norm(e.name) === norm(name));
+            if (existente) {
+                existente.qty = Math.round(((Number(existente.qty) || 0) + (Number(qty) || 1)) * 1000) / 1000;
+            } else {
+                state.estoque.push({ id: uid(), name, qty: Number(qty) || 1, unit, cat: catName(cat) });
+            }
+        }
+
+        function salvarEstoqueItem() {
+            const name = document.getElementById('estoqueName').value.trim();
+            const cat = document.getElementById('estoqueCat').value || 'Outros';
+            const qty = num(document.getElementById('estoqueQty').value);
+            const unit = document.getElementById('estoqueUnit').value || 'un';
+
+            if (!name) return toast('Informe o nome do produto.', 'error');
+            if (!(qty > 0)) return toast('Informe uma quantidade válida.', 'error');
+
+            adicionarEstoqueInterno({ name, qty, unit, cat });
+            fecharModal('modalEstoque');
+            save();
+            toast('Item adicionado ao estoque.');
+        }
+
+        function ajustarEstoque(id, delta) {
+            const item = state.estoque.find((e) => e.id === id);
+            if (!item) return;
+            item.qty = Math.max(0, Math.round(((Number(item.qty) || 0) + delta) * 1000) / 1000);
+            save();
+        }
+
+        function pedirRemocaoEstoque(id) {
+            const item = state.estoque.find((e) => e.id === id);
+            if (!item) return;
+            abrirConfirm({
+                titulo: 'Excluir do estoque',
+                texto: `Remover "${item.name}" do estoque?`,
+                ok: 'Excluir',
+                perigo: true,
+                onOk: () => {
+                    state.estoque = state.estoque.filter((e) => e.id !== id);
+                    save();
+                    toast('Item removido do estoque.', 'info');
+                }
+            });
+        }
+
+        function importarDaLista() {
+            const checked = state.items.filter((i) => i.checked);
+            const origem = checked.length ? checked : state.items;
+
+            if (!origem.length) return toast('Sua lista está vazia.', 'error');
+
+            origem.forEach((i) => adicionarEstoqueInterno({
+                name: i.name,
+                qty: i.qty,
+                unit: i.unit,
+                cat: i.cat
+            }));
+
+            save();
+            toast(`${origem.length} ${origem.length === 1 ? 'item importado' : 'itens importados'} para o estoque.`);
+        }
+
+        /* =====================================================================
+           NOTA FISCAL / OCR
+        ===================================================================== */
+        function inferirUnidade(nome) {
+            const n = norm(nome);
+            if (/\b(kg|quilo|quilos)\b/.test(n)) return 'kg';
+            if (/\b(ml|mililitro|mililitros)\b/.test(n)) return 'ml';
+            if (/\b(l|lt|litro|litros)\b/.test(n)) return 'L';
+            if (/\b(g|grama|gramas)\b/.test(n)) return 'g';
+            return 'un';
+        }
+
+        function extrairItensNota(texto) {
+            const ignorar = /\b(total|subtotal|cnpj|cpf|desconto|troco|pagamento|valor|caixa|operador|cupom|obrigado|fiscal|tributos|icms|qtd|quantidade|item|vlr|r\$)\b/i;
+            const vistos = new Set();
+            const resultado = [];
+
+            String(texto || '').split(/\r?\n/).forEach((linha) => {
+                let nome = linha
+                    .replace(/^\s*\d{1,6}\s+/, '')
+                    .replace(/\s+\d+[.,]\d{2}\s*$/, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+
+                if (nome.length < 3 || nome.length > 60) return;
+                if (!/[a-zA-ZÀ-ÿ]{2}/.test(nome)) return;
+                if (ignorar.test(nome)) return;
+
+                const chave = norm(nome);
+                if (vistos.has(chave)) return;
+                vistos.add(chave);
+                resultado.push(nome);
+            });
+
+            return resultado.slice(0, 40);
         }
 
         async function processarNota() {
             const file = document.getElementById('fileNota').files[0];
             const text = document.getElementById('textNota').value;
+            const btn = document.getElementById('btnProcessarNota');
+            const original = btn.innerHTML;
             let final = text;
-            if (file) {
-                const res = await Tesseract.recognize(file, 'por');
-                final = res.data.text;
+
+            try {
+                if (file) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Lendo nota...';
+                    refreshIcons();
+
+                    const res = await Tesseract.recognize(file, 'por');
+                    final = res?.data?.text || '';
+                }
+
+                if (!final || !final.trim()) return toast('Nada para processar.', 'error');
+
+                const itens = extrairItensNota(final);
+                if (!itens.length) return toast('Não encontrei produtos na nota.', 'error');
+
+                itens.forEach((nome) => {
+                    adicionarEstoqueInterno({
+                        name: nome,
+                        qty: 1,
+                        unit: inferirUnidade(nome),
+                        cat: 'Outros'
+                    });
+                });
+
+                save();
+                fecharModal('modalNota');
+                document.getElementById('fileNota').value = '';
+                document.getElementById('textNota').value = '';
+                document.getElementById('notaFileName').textContent = 'Selecionar foto da nota';
+
+                toast(`${itens.length} ${itens.length === 1 ? 'item adicionado' : 'itens adicionados'} ao estoque.`);
+                showTab('estoque');
+            } catch (e) {
+                toast('Não foi possível ler a nota fiscal.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+                refreshIcons();
             }
-            if (!final) return toast("Nada para processar.", 'error');
-            final.split('\n').forEach(l => {
-                if (l.trim().length > 3) state.estoque.push({ name: l.trim() });
+        }
+
+        /* =====================================================================
+           RECEITAS
+        ===================================================================== */
+        const RECEITAS = [
+            {
+                id: 'omelete-legumes',
+                nome: 'Omelete de legumes',
+                tempo: 15,
+                porcoes: 2,
+                icone: 'egg-fried',
+                cor: 'from-amber-100 to-orange-50',
+                ingredientes: ['ovos', 'tomate', 'cebola', 'queijo'],
+                preparo: 'Bata os ovos com sal e pimenta. Refogue a cebola e o tomate em uma frigideira, acrescente os ovos batidos e finalize com o queijo. Cozinhe em fogo baixo até firmar.'
+            },
+            {
+                id: 'arroz-frango',
+                nome: 'Arroz com frango',
+                tempo: 40,
+                porcoes: 3,
+                icone: 'drumstick',
+                cor: 'from-orange-100 to-amber-50',
+                ingredientes: ['arroz', 'frango', 'alho', 'cebola'],
+                preparo: 'Doure o frango temperado, acrescente alho e cebola e refogue. Adicione o arroz lavado, água quente e cozinhe tampado até secar. Descanse por 5 minutos antes de servir.'
+            },
+            {
+                id: 'macarrao-alho',
+                nome: 'Macarrão ao alho e óleo',
+                tempo: 20,
+                porcoes: 2,
+                icone: 'wheat',
+                cor: 'from-yellow-100 to-amber-50',
+                ingredientes: ['macarrão', 'alho', 'azeite'],
+                preparo: 'Cozinhe o macarrão al dente. Doure o alho fatiado no azeite em fogo baixo, misture o macarrão escorrido e ajuste o sal. Finalize com a água do cozimento para dar cremosidade.'
+            },
+            {
+                id: 'salada-caprese',
+                nome: 'Salada caprese',
+                tempo: 10,
+                porcoes: 2,
+                icone: 'salad',
+                cor: 'from-emerald-100 to-teal-50',
+                ingredientes: ['tomate', 'mussarela', 'manjericão'],
+                preparo: 'Fatie o tomate e a mussarela, intercale no prato e tempere com azeite, sal e folhas de manjericão fresco.'
+            },
+            {
+                id: 'sopa-legumes',
+                nome: 'Sopa de legumes',
+                tempo: 35,
+                porcoes: 3,
+                icone: 'soup',
+                cor: 'from-lime-100 to-emerald-50',
+                ingredientes: ['batata', 'cenoura', 'cebola', 'alho'],
+                preparo: 'Refogue a cebola e o alho, junte batata e cenoura em cubos e cubra com água. Cozinhe até amaciar, tempere e bata metade da sopa para engrossar.'
+            },
+            {
+                id: 'panqueca-banana',
+                nome: 'Panqueca de banana',
+                tempo: 20,
+                porcoes: 2,
+                icone: 'cake-slice',
+                cor: 'from-rose-100 to-amber-50',
+                ingredientes: ['banana', 'ovos', 'farinha', 'leite'],
+                preparo: 'Amasse as bananas e misture com ovos, farinha e leite até formar uma massa homogênea. Doure colheradas em frigideira antiaderente e sirva com canela.'
+            }
+        ];
+
+        let filtroReceitas = 'todas';
+
+        function setFiltroReceitas(value) {
+            filtroReceitas = value;
+            renderReceitas();
+        }
+
+        function temIngrediente(nome) {
+            const n = norm(nome);
+            const pool = [...state.estoque.map((e) => e.name), ...state.items.map((i) => i.name)];
+            return pool.some((p) => {
+                const x = norm(p);
+                if (!x) return false;
+                if (x === n) return true;
+                return x.length > 3 && n.length > 3 && (x.includes(n) || n.includes(x));
             });
-            save();
-            document.getElementById('modalNota').classList.add('hidden');
         }
 
-        function toggleManualType() {
-            const type = document.getElementById('manualType').value;
-            document.getElementById('fieldsUnidade').classList.toggle('hidden', type === 'kg');
-            document.getElementById('fieldsPesavel').classList.toggle('hidden', type === 'un');
+        function receitaDisponivel(receita) {
+            return receita.ingredientes.every((i) => temIngrediente(i));
         }
 
-        function calcularPesavel() {
-            let priceKg = parseFloat(document.getElementById('manualPriceKg').value) || 0;
-            let weight = parseFloat(document.getElementById('manualWeight').value) || 0;
-            
-            // Heurística simples: se o peso for maior que 10, assumimos que é em gramas
-            if (weight > 10) weight = weight / 1000;
-            
-            const total = priceKg * weight;
-            document.getElementById('manualCalculatedTotal').innerText = total.toFixed(2);
-            return { total, weight };
-        }
+        function renderReceitas() {
+            const filtrosEl = document.getElementById('receitas-filtros');
+            const root = document.getElementById('receitas-root');
+            if (!root) return;
 
-        function adicionarManual() {
-            const name = document.getElementById('manualName').value;
-            const type = document.getElementById('manualType').value;
-            
-            if (!name) return toast("Digite o nome do produto.", 'error');
-
-            let item = { id: Date.now(), name, checked: true, cat: 'Manual' };
-
-            if (type === 'un') {
-                const price = parseFloat(document.getElementById('manualPrice').value);
-                if (!price || price <= 0) return toast("Digite o preço.", 'error');
-                item.price = price;
-                item.qty = 1;
-                item.unit = 'un';
-            } else {
-                const calc = calcularPesavel();
-                if (!calc.total || calc.total <= 0) return toast("Preencha o preço e o peso.", 'error');
-                item.price = calc.total;
-                item.qty = calc.weight;
-                item.unit = 'kg';
+            if (filtrosEl) {
+                filtrosEl.innerHTML = [
+                    { id: 'todas', label: 'Todas' },
+                    { id: 'possiveis', label: 'Posso fazer' }
+                ].map((c) => {
+                    const active = filtroReceitas === c.id;
+                    return `<button onclick="setFiltroReceitas('${c.id}')" class="shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${active ? 'border-brand-600 bg-brand-600 text-white' : 'border-line bg-white text-muted hover:border-slate-300'}">${c.label}</button>`;
+                }).join('');
             }
 
-            state.items.push(item);
-            save();
-            document.getElementById('modalManual').classList.add('hidden');
-            
-            // Limpar campos
-            document.getElementById('manualName').value = '';
-            document.getElementById('manualPrice').value = '';
-            document.getElementById('manualPriceKg').value = '';
-            document.getElementById('manualWeight').value = '';
-            document.getElementById('manualCalculatedTotal').innerText = '0.00';
-            
-            toast("Produto adicionado!");
-        }
+            let lista = RECEITAS;
+            if (filtroReceitas === 'possiveis') lista = lista.filter(receitaDisponivel);
 
-        function finalizarCompra() {
-            const checkedItems = state.items.filter(i => i.checked);
-            if (checkedItems.length === 0) {
-                return toast("Nenhum item marcado para finalizar.", 'error');
-            }
-            
-            const totalPlanned = state.budget;
-            const totalSpent = checkedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-            
-            const compra = {
-                id: Date.now(),
-                date: new Date().toLocaleDateString('pt-BR'),
-                totalPlanned: totalPlanned,
-                totalSpent: totalSpent,
-                itemsCount: checkedItems.length,
-                items: checkedItems.map(i => ({ name: i.name, qty: i.qty, unit: i.unit, price: i.price }))
-            };
-            
-            state.historico.push(compra);
-            state.items = state.items.filter(i => !i.checked);
-            save();
-            toast("Compra finalizada com sucesso! ✅");
-            showTab('relatorio');
-        }
-
-        function renderHistorico() {
-            const container = document.getElementById('historico-container');
-            if (!container) return;
-            
-            if (state.historico.length === 0) {
-                container.innerHTML = '<div class="p-10 text-center text-gray-300 font-medium">Nenhum registro.</div>';
+            if (!lista.length) {
+                root.innerHTML = `
+                    <div class="flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-9 text-center">
+                        <span class="grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand-600">
+                            <i data-lucide="chef-hat" class="h-6 w-6"></i>
+                        </span>
+                        <h3 class="mt-4 text-base font-semibold text-ink">Nenhuma receita completa</h3>
+                        <p class="mt-1 max-w-[250px] text-xs leading-relaxed text-muted">Abasteça o estoque para ver receitas que você pode preparar agora.</p>
+                        <button onclick="setFiltroReceitas('todas')" class="btn btn-secondary mt-4 px-4">Ver todas</button>
+                    </div>
+                `;
+                refreshIcons();
                 return;
             }
-            
-            container.innerHTML = state.historico.slice().reverse().map(h => `
-                <div class="p-6 bg-white border border-gray-100 rounded-3xl animate-item shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <div>
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">${h.date}</div>
-                            <div class="font-black text-gray-900">${h.itemsCount} produtos</div>
+
+            root.innerHTML = lista.map((r) => {
+                const disponiveis = r.ingredientes.filter((i) => temIngrediente(i));
+                const faltam = r.ingredientes.length - disponiveis.length;
+                const chips = r.ingredientes.slice(0, 4).map((ing) => {
+                    const tem = temIngrediente(ing);
+                    return `<span class="rounded-full px-2 py-0.5 text-[10px] font-medium ${tem ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-500'}">${esc(ing)}</span>`;
+                }).join('');
+
+                return `
+                    <article class="overflow-hidden rounded-[20px] border border-line bg-white shadow-card">
+                        <div class="relative h-24 bg-gradient-to-br ${r.cor}">
+                            <i data-lucide="${r.icone}" class="absolute -right-3 -top-2 h-[88px] w-[88px] text-white/70"></i>
+                            <div class="absolute bottom-3 left-4 flex items-center gap-2">
+                                <span class="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-ink backdrop-blur">${r.tempo} min</span>
+                                <span class="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-ink backdrop-blur">${r.porcoes} porções</span>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total</div>
-                            <div class="font-black text-emerald-600">R$ ${h.totalSpent.toFixed(2)}</div>
+                        <div class="p-4">
+                            <h3 class="text-sm font-semibold text-ink">${r.nome}</h3>
+                            <div class="mt-2 flex flex-wrap gap-1.5">${chips}</div>
+                            <div class="mt-3 flex items-center justify-between gap-3">
+                                <span class="text-[11px] font-medium ${faltam === 0 ? 'text-brand-600' : 'text-muted'}">
+                                    ${faltam === 0 ? 'Tudo em casa' : `Faltam ${faltam} ${faltam === 1 ? 'ingrediente' : 'ingredientes'}`}
+                                </span>
+                                <button onclick="abrirReceita('${r.id}')" class="text-[11px] font-semibold text-brand-600 active:scale-95">Ver receita</button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            refreshIcons();
+        }
+
+        function abrirReceita(id) {
+            const receita = RECEITAS.find((r) => r.id === id);
+            if (!receita) return;
+
+            const faltantes = receita.ingredientes.filter((i) => !temIngrediente(i));
+
+            document.getElementById('receitaConteudo').innerHTML = `
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Receita</p>
+                        <h2 class="mt-1 text-lg font-semibold leading-snug text-ink">${receita.nome}</h2>
+                    </div>
+                    <button onclick="fecharModal('modalReceita')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                        <i data-lucide="x" class="h-4 w-4"></i>
+                    </button>
+                </div>
+
+                <div class="mt-4 flex items-center gap-2">
+                    <span class="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-muted">
+                        <i data-lucide="clock" class="h-3.5 w-3.5"></i> ${receita.tempo} min
+                    </span>
+                    <span class="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-muted">
+                        <i data-lucide="users" class="h-3.5 w-3.5"></i> ${receita.porcoes} porções
+                    </span>
+                </div>
+
+                <div class="mt-5">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Ingredientes</p>
+                    <div class="mt-2 space-y-1.5">
+                        ${receita.ingredientes.map((ing) => {
+                            const tem = temIngrediente(ing);
+                            return `
+                                <div class="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2 ${tem ? 'bg-brand-50/60' : 'bg-surface'}">
+                                    <span class="text-sm font-medium ${tem ? 'text-brand-700' : 'text-muted'}">${esc(ing)}</span>
+                                    <span class="flex items-center gap-1 text-[10px] font-semibold ${tem ? 'text-brand-600' : 'text-slate-400'}">
+                                        <i data-lucide="${tem ? 'check' : 'plus'}" class="h-3.5 w-3.5"></i>
+                                        ${tem ? 'Em casa' : 'Falta'}
+                                    </span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Modo de preparo</p>
+                    <p class="mt-2 text-sm leading-relaxed text-muted">${esc(receita.preparo)}</p>
+                </div>
+
+                <div class="mt-6">
+                    ${faltantes.length
+                        ? `<button onclick="adicionarFaltantesReceita('${receita.id}')" class="btn btn-primary w-full">
+                               <i data-lucide="plus" class="h-4 w-4"></i> Adicionar ${faltantes.length} ${faltantes.length === 1 ? 'faltante' : 'faltantes'} à lista
+                           </button>`
+                        : `<div class="flex items-center justify-center gap-2 rounded-[14px] bg-brand-50 py-3.5 text-sm font-semibold text-brand-700">
+                               <i data-lucide="check-circle-2" class="h-4 w-4"></i> Você tem todos os ingredientes
+                           </div>`}
+                </div>
+            `;
+
+            abrirModal('modalReceita');
+            refreshIcons();
+        }
+
+        function adicionarFaltantesReceita(id) {
+            const receita = RECEITAS.find((r) => r.id === id);
+            if (!receita) return;
+
+            const faltantes = receita.ingredientes.filter((i) => !temIngrediente(i));
+            if (!faltantes.length) return;
+
+            faltantes.forEach((nome) => {
+                state.items.push({ id: uid(), name: cap(nome), cat: 'Outros', price: 0, qty: 1, unit: 'un', checked: false });
+            });
+
+            fecharModal('modalReceita');
+            save();
+            toast(`${faltantes.length} ${faltantes.length === 1 ? 'ingrediente adicionado' : 'ingredientes adicionados'} à lista.`);
+        }
+
+        /* =====================================================================
+           GASTOS / HISTÓRICO
+        ===================================================================== */
+        function renderGastos() {
+            const root = document.getElementById('gastos-root');
+            if (!root) return;
+
+            const historico = state.historico.slice().sort((a, b) => b.ts - a.ts);
+
+            if (!historico.length) {
+                root.innerHTML = `
+                    <div class="flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-10 text-center">
+                        <span class="grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand-600">
+                            <i data-lucide="bar-chart-3" class="h-6 w-6"></i>
+                        </span>
+                        <h3 class="mt-4 text-base font-semibold text-ink">Nenhuma compra registrada</h3>
+                        <p class="mt-1 max-w-[260px] text-xs leading-relaxed text-muted">Finalize sua primeira compra para acompanhar seus gastos por categoria e período.</p>
+                        <button onclick="showTab('lista')" class="btn btn-primary mt-5 px-5">
+                            <i data-lucide="list" class="h-4 w-4"></i> Ir para a lista
+                        </button>
+                    </div>
+                `;
+                refreshIcons();
+                return;
+            }
+
+            const totalAll = historico.reduce((sum, h) => sum + h.totalSpent, 0);
+            const planejadoAll = historico.reduce((sum, h) => sum + h.totalPlanned, 0);
+            const economia = planejadoAll - totalAll;
+            const media = totalAll / historico.length;
+
+            const agora = monthKey(Date.now());
+            const anteriorDate = new Date();
+            anteriorDate.setDate(1);
+            anteriorDate.setMonth(anteriorDate.getMonth() - 1);
+            const anterior = monthKey(anteriorDate.getTime());
+
+            const totalMes = historico.filter((h) => monthKey(h.ts) === agora).reduce((s, h) => s + h.totalSpent, 0);
+            const totalAnterior = historico.filter((h) => monthKey(h.ts) === anterior).reduce((s, h) => s + h.totalSpent, 0);
+
+            let comparativo = '<span class="text-[11px] font-medium text-slate-400">Primeiro mês de registro</span>';
+            if (totalAnterior > 0) {
+                const delta = ((totalMes - totalAnterior) / totalAnterior) * 100;
+                const subiu = delta >= 0;
+                comparativo = `
+                    <span class="flex items-center gap-1 text-[11px] font-semibold ${subiu ? 'text-red-300' : 'text-brand-400'}">
+                        <i data-lucide="${subiu ? 'trending-up' : 'trending-down'}" class="h-3.5 w-3.5"></i>
+                        ${subiu ? '+' : ''}${delta.toFixed(0)}% vs. mês anterior
+                    </span>
+                `;
+            }
+
+            // Categorias
+            const categorias = new Map();
+            historico.forEach((h) => {
+                h.items.forEach((item) => {
+                    const cat = catName(item.cat || 'Outros');
+                    categorias.set(cat, (categorias.get(cat) || 0) + itemTotal(item));
+                });
+            });
+
+            const totalCategorias = Array.from(categorias.values()).reduce((s, v) => s + v, 0) || 1;
+            const topCategorias = Array.from(categorias.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+            // Últimos 6 meses
+            const buckets = [];
+            const base = new Date();
+            base.setDate(1);
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+                buckets.push({
+                    key: monthKey(d.getTime()),
+                    label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+                    total: 0
+                });
+            }
+            historico.forEach((h) => {
+                const bucket = buckets.find((b) => b.key === monthKey(h.ts));
+                if (bucket) bucket.total += h.totalSpent;
+            });
+            const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
+
+            root.innerHTML = `
+                <!-- Hero -->
+                <div class="relative overflow-hidden rounded-[20px] bg-ink p-5 text-white shadow-card">
+                    <div class="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-brand-500/15 blur-2xl"></div>
+                    <div class="relative flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">Total gasto</p>
+                            <div class="mt-1.5 flex items-baseline gap-1.5">
+                                <span class="text-sm font-medium text-slate-400">R$</span>
+                                <span class="num text-[32px] font-bold leading-none tracking-tight">${money(totalAll)}</span>
+                            </div>
+                        </div>
+                        <span class="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-slate-300">${historico.length} ${historico.length === 1 ? 'compra' : 'compras'}</span>
+                    </div>
+                    <div class="relative mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-[0.12em] text-slate-400">Este mês</p>
+                            <p class="num mt-0.5 text-sm font-semibold text-white">R$ ${money(totalMes)}</p>
+                        </div>
+                        ${comparativo}
+                    </div>
+                </div>
+
+                <!-- Indicadores -->
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                    <div class="rounded-[14px] border border-line bg-white p-4 shadow-card">
+                        <div class="flex items-center gap-2 text-muted">
+                            <i data-lucide="receipt" class="h-4 w-4"></i>
+                            <span class="text-[11px] font-medium">Média por compra</span>
+                        </div>
+                        <p class="num mt-2 text-lg font-bold text-ink">R$ ${money(media)}</p>
+                    </div>
+                    <div class="rounded-[14px] border border-line bg-white p-4 shadow-card">
+                        <div class="flex items-center gap-2 text-muted">
+                            <i data-lucide="wallet" class="h-4 w-4"></i>
+                            <span class="text-[11px] font-medium">${economia >= 0 ? 'Abaixo do orçamento' : 'Acima do orçamento'}</span>
+                        </div>
+                        <p class="num mt-2 text-lg font-bold ${economia >= 0 ? 'text-brand-600' : 'text-danger'}">R$ ${money(Math.abs(economia))}</p>
+                    </div>
+                </div>
+
+                <!-- Categorias -->
+                <section class="mt-6">
+                    <h2 class="px-0.5 text-sm font-semibold text-ink">Gastos por categoria</h2>
+                    <div class="mt-3 rounded-[14px] border border-line bg-white p-4 shadow-card">
+                        ${topCategorias.length ? topCategorias.map(([cat, valor], idx) => {
+                            const pct = Math.max(3, (valor / totalCategorias) * 100);
+                            const cores = ['bg-brand-600', 'bg-brand-500', 'bg-brand-400', 'bg-teal-500', 'bg-slate-400', 'bg-slate-300'];
+                            return `
+                                <div class="${idx ? 'mt-3.5' : ''}">
+                                    <div class="flex items-center justify-between gap-3 text-xs">
+                                        <span class="truncate font-medium text-ink">${esc(cat)}</span>
+                                        <span class="num shrink-0 font-semibold text-muted">R$ ${money(valor)}</span>
+                                    </div>
+                                    <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full ${cores[idx % cores.length]}" style="width:${pct}%"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<p class="text-xs text-muted">Sem dados de categoria.</p>'}
+                    </div>
+                </section>
+
+                <!-- Evolução mensal -->
+                <section class="mt-6">
+                    <h2 class="px-0.5 text-sm font-semibold text-ink">Últimos 6 meses</h2>
+                    <div class="mt-3 rounded-[14px] border border-line bg-white p-4 shadow-card">
+                        <div class="flex h-24 items-end gap-2">
+                            ${buckets.map((b) => {
+                                const h = b.total > 0 ? Math.max(8, Math.round((b.total / maxBucket) * 74)) : 4;
+                                const atual = b.key === agora;
+                                return `
+                                    <div class="flex h-full flex-1 flex-col items-center justify-end gap-1.5" title="R$ ${money(b.total)}">
+                                        <div class="w-full rounded-md ${atual ? 'bg-brand-600' : b.total > 0 ? 'bg-slate-200' : 'bg-slate-100'}" style="height:${h}px"></div>
+                                        <span class="text-[10px] ${atual ? 'font-semibold text-brand-700' : 'text-muted'}">${b.label}</span>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
+                </section>
+
+                <!-- Histórico -->
+                <section class="mt-6">
+                    <h2 class="px-0.5 text-sm font-semibold text-ink">Histórico de compras</h2>
+                    <div class="mt-3 space-y-3">
+                        ${historico.map(historicoCardHTML).join('')}
+                    </div>
+                </section>
+            `;
+
+            refreshIcons();
+        }
+
+        function historicoCardHTML(h) {
+            const diff = h.totalPlanned - h.totalSpent;
+            const temPlanejado = h.totalPlanned > 0;
+            const diffLabel = !temPlanejado
+                ? ''
+                : `<p class="text-[10px] font-medium ${diff >= 0 ? 'text-brand-600' : 'text-danger'}">${diff >= 0 ? `R$ ${money(diff)} abaixo` : `R$ ${money(-diff)} acima`}</p>`;
+
+            return `
+                <article class="overflow-hidden rounded-[14px] border border-line bg-white shadow-card">
                     <details class="group">
-                        <summary class="list-none cursor-pointer text-xs font-bold text-gray-900 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
-                            DETALHES DA COMPRA
-                            <span class="group-open:rotate-180 transition-transform">↓</span>
-                        </summary>
-                        <div class="mt-4 pt-4 border-t border-gray-50 space-y-2">
-                            ${h.items.map(i => `
-                                <div class="flex justify-between text-sm font-medium">
-                                    <span class="text-gray-500">${i.name}</span>
-                                    <span class="text-gray-900 font-bold">R$ ${i.price.toFixed(2)}</span>
+                        <summary class="flex cursor-pointer items-center justify-between gap-3 p-4">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-medium text-muted">${esc(h.date)}</p>
+                                <p class="mt-0.5 text-sm font-semibold text-ink">${h.itemsCount} ${h.itemsCount === 1 ? 'item' : 'itens'}</p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <div class="text-right">
+                                    <p class="num text-sm font-bold text-ink">R$ ${money(h.totalSpent)}</p>
+                                    ${diffLabel}
                                 </div>
-                            `).join('')}
+                                <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180"></i>
+                            </div>
+                        </summary>
+                        <div class="border-t border-line px-4 py-2">
+                            ${h.items.length
+                                ? h.items.map((item) => `
+                                    <div class="flex items-center justify-between gap-3 border-b border-slate-50 py-2 last:border-0">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-medium text-ink">${esc(item.name)}</p>
+                                            <p class="num text-[11px] text-muted">${qtyFmt(item.qty || 1)} ${esc(item.unit || 'un')} × R$ ${money(item.price)}</p>
+                                        </div>
+                                        <span class="num shrink-0 text-sm font-semibold text-ink">R$ ${money(itemTotal(item))}</span>
+                                    </div>
+                                `).join('')
+                                : '<p class="py-3 text-xs text-muted">Sem itens detalhados.</p>'}
                         </div>
                     </details>
-                </div>
-            `).join('');
+                </article>
+            `;
         }
 
-        showTab('lista');
-        render();
+        /* =====================================================================
+           PWA: instalação e service worker
+        ===================================================================== */
+        let deferredPrompt = null;
 
-        // Criar botão de instalação dinamicamente no header
-        const headerDiv = document.querySelector('header > div');
-        if (headerDiv) {
-            const btnContainer = document.createElement('div');
-            btnContainer.className = 'flex gap-2';
-            const scannerBtn = headerDiv.querySelector('button');
-            const btnInstalar = document.createElement('button');
-            btnInstalar.id = 'btnInstalar';
-            btnInstalar.className = 'p-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-colors hidden';
-            btnInstalar.title = 'Instalar aplicativo';
-            btnInstalar.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>';
-            btnContainer.appendChild(scannerBtn.cloneNode(true));
-            btnContainer.appendChild(btnInstalar);
-            headerDiv.replaceChild(btnContainer, scannerBtn);
-        }
-
-        // Registrar Service Worker simples via Data URI (exigido para PWA)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch", (e) => {});')
-                .catch(e => console.log('SW error:', e));
-        }
-
-        // Suporte para instalação PWA (Prompt de instalação)
-        let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             const btn = document.getElementById('btnInstalar');
-            if(btn) btn.classList.remove('hidden');
+            if (btn) btn.style.display = 'grid';
         });
 
-        const btnInstalar = document.getElementById('btnInstalar');
-        if (btnInstalar) {
-            btnInstalar.addEventListener('click', async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') deferredPrompt = null;
-                } else {
-                    toast('No Android/iOS, use o menu do navegador (3 pontos/Compartilhar) -> "Adicionar à Tela Inicial"', 'info');
+        async function instalarApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    deferredPrompt = null;
+                    const btn = document.getElementById('btnInstalar');
+                    if (btn) btn.style.display = 'none';
                 }
+            } else {
+                toast('Use o menu do navegador: "Adicionar à tela inicial".', 'info');
+            }
+        }
+
+        window.addEventListener('appinstalled', () => {
+            const btn = document.getElementById('btnInstalar');
+            if (btn) btn.style.display = 'none';
+            toast('Aplicativo instalado.');
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            const btn = document.getElementById('btnInstalar');
+            if (btn) btn.style.display = 'none';
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((err) => console.log('Service worker não registrado:', err));
             });
         }
+
+        /* =====================================================================
+           INICIALIZAÇÃO
+        ===================================================================== */
+        showTab('lista');
+        render();
     </script>
 </body>
 </html>
