@@ -10,127 +10,174 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .tab-content.hidden { display: none; }
+        .btn-action {
+            transition: all 0.2s ease;
+            transform: translateY(0);
+        }
+        .btn-action:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 pb-20">
+<body class="bg-gray-100 text-gray-900 pb-24" style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
 
-    <header class="bg-emerald-700 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-xl font-bold">🛒 Smart Kitchen</h1>
+    <header class="bg-gradient-to-r from-rose-500 via-orange-500 to-purple-600 text-white p-4 sticky top-0 z-40 shadow-lg rounded-b-3xl">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold leading-tight">Smart Kitchen</h1>
+                <p class="text-xs opacity-80">Seu mercado inteligente</p>
+            </div>
             <div class="flex gap-2">
-                <button onclick="openScanner()" class="bg-amber-400 text-emerald-900 p-2 rounded-lg font-bold">📷</button>
-                <button id="btnInstalar" class="bg-white text-emerald-700 px-3 py-1 rounded text-sm font-bold hidden">📲</button>
+                <button onclick="openScanner()" class="btn-action bg-white text-orange-500 p-3 rounded-full font-bold shadow-lg">📷</button>
+                <button id="btnInstalar" class="btn-action bg-white/20 text-white px-3 py-1 rounded-full text-sm font-bold hidden">📲</button>
             </div>
         </div>
-        <nav class="flex gap-2">
-            <button onclick="showTab('lista')" class="tab-btn flex-1 py-2 bg-emerald-800 rounded font-semibold" data-tab="lista">🛒 Lista</button>
-            <button onclick="showTab('estoque')" class="tab-btn flex-1 py-2 rounded" data-tab="estoque">🏠 Estoque</button>
-            <button onclick="showTab('receitas')" class="tab-btn flex-1 py-2 rounded" data-tab="receitas">👨‍🍳 Receitas</button>
-            <button onclick="showTab('relatorio')" class="tab-btn flex-1 py-2 rounded" data-tab="relatorio">📊 Gastos</button>
-        </nav>
     </header>
 
     <main id="app" class="p-4 max-w-2xl mx-auto">
         <div id="lista" class="tab-content">
-            <div class="bg-white p-4 rounded-xl shadow-sm mb-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-gray-500">Orçamento (R$)</label><input type="number" id="inputBudget" onchange="updateBudget()" class="w-full border rounded p-1" value="200"></div>
-                    <div><label class="text-xs text-gray-500">Saldo (R$)</label><div id="displaySaldo" class="font-bold text-emerald-700">0.00</div></div>
+            <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 rounded-3xl shadow-lg mb-4 text-white">
+                <h3 class="text-sm opacity-90 mb-1">Orçamento Mensal</h3>
+                <div class="flex items-end gap-4 mb-3">
+                    <div class="flex-1">
+                        <input type="number" id="inputBudget" onchange="updateBudget()" class="w-full bg-white/20 border-0 rounded-2xl p-3 text-2xl font-bold text-white placeholder-white/50 backdrop-blur" value="200">
+                    </div>
+                    <div>
+                        <div class="text-xs opacity-75">Saldo</div>
+                        <div id="displaySaldo" class="text-3xl font-bold">0.00</div>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2"><div id="budgetBar" class="bg-emerald-700 h-2.5 rounded-full" style="width: 0%"></div></div>
+                <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden backdrop-blur">
+                    <div id="budgetBar" class="h-3 rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);"></div>
+                </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-2 mb-4">
-                <button onclick="openScanner()" class="bg-amber-400 text-emerald-900 py-3 rounded-xl font-bold shadow-md">📷 Escanear</button>
-                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-md">➕ Adicionar</button>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button onclick="openScanner()" class="btn-action bg-gradient-to-br from-orange-400 to-pink-500 text-white py-5 rounded-3xl font-bold shadow-lg text-lg">
+                    📷<br><span class="text-sm">Escanear</span>
+                </button>
+                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="btn-action bg-gradient-to-br from-teal-400 to-blue-500 text-white py-5 rounded-3xl font-bold shadow-lg text-lg">
+                    ➕<br><span class="text-sm">Adicionar</span>
+                </button>
             </div>
 
-            <div id="items-container" class="space-y-2"></div>
-            <div class="mt-6">
-                <button onclick="finalizarCompra()" class="w-full py-4 bg-emerald-700 text-white font-bold rounded-xl shadow-lg">✅ Finalizar Compra</button>
-            </div>
+            <div id="items-container" class="space-y-3 mb-6"></div>
+            <button onclick="finalizarCompra()" class="btn-action w-full py-5 bg-gradient-to-r from-green-400 to-emerald-500 text-white font-bold rounded-3xl shadow-xl text-lg">
+                ✅ Finalizar Compra
+            </button>
         </div>
 
         <div id="estoque" class="tab-content hidden">
-            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="w-full mb-4 py-3 bg-amber-400 text-emerald-900 font-bold rounded-lg shadow-md">🧾 Importar Nota Fiscal</button>
-            <div id="estoque-container" class="space-y-2"></div>
+            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="btn-action w-full mb-5 py-5 bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold rounded-3xl shadow-lg text-lg">
+                🧾 Importar Nota Fiscal
+            </button>
+            <div id="estoque-container" class="space-y-3"></div>
         </div>
 
         <div id="receitas" class="tab-content hidden">
-            <div class="text-center py-10 text-gray-500">Funcionalidade de Receitas em breve...</div>
+            <div class="bg-white p-10 rounded-3xl shadow-lg text-center">
+                <div class="text-6xl mb-3">👨‍🍳</div>
+                <p class="text-gray-500">Funcionalidade de Receitas em breve...</p>
+            </div>
         </div>
 
         <div id="relatorio" class="tab-content hidden">
-            <div class="bg-white p-4 rounded-xl shadow-sm mb-4">
-                <h2 class="text-lg font-bold mb-4">📊 Histórico de Compras</h2>
-                <div id="historico-container" class="space-y-3"></div>
+            <div class="bg-white p-6 rounded-3xl shadow-lg mb-4">
+                <h2 class="text-2xl font-bold mb-5 bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">📊 Histórico de Compras</h2>
+                <div id="historico-container" class="space-y-4"></div>
             </div>
         </div>
     </main>
 
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-lg rounded-full shadow-2xl px-2 py-2 flex gap-1 max-w-md w-[calc(100%-2rem)] border border-white/50">
+        <button onclick="showTab('lista')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="lista">
+            <span class="text-xl">🛒</span>
+            <span class="text-[10px] font-semibold">Lista</span>
+        </button>
+        <button onclick="showTab('estoque')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="estoque">
+            <span class="text-xl">🏠</span>
+            <span class="text-[10px] font-semibold">Estoque</span>
+        </button>
+        <button onclick="showTab('receitas')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="receitas">
+            <span class="text-xl">👨‍🍳</span>
+            <span class="text-[10px] font-semibold">Receitas</span>
+        </button>
+        <button onclick="showTab('relatorio')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="relatorio">
+            <span class="text-xl">📊</span>
+            <span class="text-[10px] font-semibold">Gastos</span>
+        </button>
+    </nav>
+
     <!-- Modal Preço -->
-    <div id="modalPreco" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6">
-            <h2 id="tituloProduto" class="text-lg font-bold mb-4">Adicionar Produto</h2>
-            <label class="text-sm text-gray-600">Preço do item (R$):</label>
-            <input type="number" id="inputPrecoItem" class="w-full border p-2 rounded mb-4" placeholder="0.00" step="0.01">
-            <div class="flex gap-2">
-                <button onclick="confirmarAdicao()" class="flex-1 bg-emerald-700 text-white py-2 rounded">✅ Confirmar</button>
-                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+    <div id="modalPreco" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+            <h2 id="tituloProduto" class="text-xl font-bold mb-6 text-gray-800">Adicionar Produto</h2>
+            <label class="text-sm text-gray-600 font-medium">Preço do item (R$):</label>
+            <input type="number" id="inputPrecoItem" class="w-full border-2 border-gray-200 p-4 rounded-2xl mb-6 text-lg focus:border-orange-400 focus:outline-none transition-all" placeholder="0.00" step="0.01">
+            <div class="flex gap-3">
+                <button onclick="confirmarAdicao()" class="btn-action flex-1 bg-gradient-to-r from-green-400 to-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg">✅ Confirmar</button>
+                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Nota -->
-    <div id="modalNota" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl p-6">
-            <h2 class="text-xl font-bold mb-4">Ler Nota Fiscal</h2>
-            <input type="file" id="fileNota" accept="image/*" class="w-full mb-4">
-            <textarea id="textNota" class="w-full border rounded p-2 mb-4" placeholder="Ou cole o texto aqui..." rows="5"></textarea>
-            <div class="flex gap-2">
-                <button onclick="processarNota()" class="flex-1 bg-emerald-700 text-white py-2 rounded">Processar</button>
-                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+    <div id="modalNota" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">🧾 Ler Nota Fiscal</h2>
+            <input type="file" id="fileNota" accept="image/*" class="w-full mb-4 p-3 border-2 border-dashed border-gray-300 rounded-2xl">
+            <textarea id="textNota" class="w-full border-2 border-gray-200 rounded-2xl p-4 mb-6 focus:border-orange-400 focus:outline-none transition-all" placeholder="Ou cole o texto aqui..." rows="5"></textarea>
+            <div class="flex gap-3">
+                <button onclick="processarNota()" class="btn-action flex-1 bg-gradient-to-r from-orange-400 to-pink-500 text-white py-4 rounded-2xl font-bold shadow-lg">Processar</button>
+                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Adicionar Manual -->
-    <div id="modalManual" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6">
-            <h2 class="text-lg font-bold mb-4">Adicionar Produto Manualmente</h2>
-            <div class="space-y-3">
+    <div id="modalManual" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+            <h2 class="text-xl font-bold mb-6 text-gray-800">Adicionar Produto</h2>
+            <div class="space-y-4">
                 <div>
-                    <label class="text-xs text-gray-600">Nome do Produto</label>
-                    <input type="text" id="manualName" class="w-full border p-2 rounded" placeholder="Ex: Maçã, Leite...">
+                    <label class="text-sm text-gray-600 font-medium block mb-2">Nome do Produto</label>
+                    <input type="text" id="manualName" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="Ex: Maçã, Leite...">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-600">Tipo de Produto</label>
-                    <select id="manualType" onchange="toggleManualType()" class="w-full border p-2 rounded">
+                    <label class="text-sm text-gray-600 font-medium block mb-2">Tipo de Produto</label>
+                    <select id="manualType" onchange="toggleManualType()" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all">
                         <option value="un">Unidade / Outros</option>
                         <option value="kg">Pesável (Kg / Gramas)</option>
                     </select>
                 </div>
                 <div id="fieldsUnidade">
-                    <label class="text-xs text-gray-600">Preço Total (R$)</label>
-                    <input type="number" id="manualPrice" step="0.01" class="w-full border p-2 rounded" placeholder="0.00">
+                    <label class="text-sm text-gray-600 font-medium block mb-2">Preço Total (R$)</label>
+                    <input type="number" id="manualPrice" step="0.01" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="0.00">
                 </div>
-                <div id="fieldsPesavel" class="hidden space-y-2">
+                <div id="fieldsPesavel" class="hidden space-y-3">
                     <div>
-                        <label class="text-xs text-gray-600">Preço por Kg (R$)</label>
-                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border p-2 rounded" placeholder="0.00" oninput="calcularPesavel()">
+                        <label class="text-sm text-gray-600 font-medium block mb-2">Preço por Kg (R$)</label>
+                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="0.00" oninput="calcularPesavel()">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-600">Peso (em kg ou g ex: 0.500 ou 500)</label>
-                        <input type="number" id="manualWeight" step="0.001" class="w-full border p-2 rounded" placeholder="Ex: 0.500 (kg) ou 500 (g)" oninput="calcularPesavel()">
+                        <label class="text-sm text-gray-600 font-medium block mb-2">Peso (kg ou g)</label>
+                        <input type="number" id="manualWeight" step="0.001" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="Ex: 0.500 ou 500" oninput="calcularPesavel()">
                     </div>
-                    <div class="text-sm font-bold text-emerald-800">
-                        Valor Calculado: R$ <span id="manualCalculatedTotal">0.00</span>
+                    <div class="bg-gradient-to-r from-orange-50 to-pink-50 p-4 rounded-2xl">
+                        <div class="text-sm text-gray-600 mb-1">Valor Calculado:</div>
+                        <div class="text-2xl font-bold text-orange-600">R$ <span id="manualCalculatedTotal">0.00</span></div>
                     </div>
                 </div>
             </div>
-            <div class="flex gap-2 mt-5">
-                <button onclick="adicionarManual()" class="flex-1 bg-emerald-700 text-white py-2 rounded font-bold">Adicionar</button>
-                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+            <div class="flex gap-3 mt-6">
+                <button onclick="adicionarManual()" class="btn-action flex-1 bg-gradient-to-r from-teal-400 to-blue-500 text-white py-4 rounded-2xl font-bold shadow-lg">Adicionar</button>
+                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
@@ -142,7 +189,15 @@
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
             document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.toggle('bg-emerald-800', b.dataset.tab === tabId);
+                if (b.dataset.tab === tabId) {
+                    b.style.background = 'linear-gradient(135deg, #fb923c 0%, #ec4899 100%)';
+                    b.style.color = 'white';
+                    b.style.boxShadow = '0 4px 12px rgba(236,72,153,0.4)';
+                } else {
+                    b.style.background = 'transparent';
+                    b.style.color = 'rgb(107 114 128)';
+                    b.style.boxShadow = 'none';
+                }
             });
             if(tabId === 'relatorio') renderHistorico();
         }
@@ -150,9 +205,9 @@
         function save() { localStorage.setItem('appState', JSON.stringify(state)); render(); renderHistorico(); }
 
         function toast(msg, type = 'success') {
-            const colors = { success: 'bg-emerald-600', error: 'bg-rose-500', info: 'bg-amber-500' };
+            const colors = { success: 'from-green-400 to-emerald-500', error: 'from-red-400 to-pink-500', info: 'from-amber-400 to-orange-500' };
             const t = document.createElement('div');
-            t.className = `fixed bottom-20 left-1/2 -translate-x-1/2 ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg z-[70] text-sm font-semibold`;
+            t.className = `fixed bottom-28 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl z-[70] text-sm font-bold max-w-[90%] text-center`;
             t.innerText = msg;
             document.body.appendChild(t);
             setTimeout(() => t.remove(), 2500);
@@ -169,30 +224,33 @@
             const total = state.items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
             const saldo = (state.budget || 0) - total;
             const pct = state.budget > 0 ? Math.min(100, (total / state.budget) * 100) : 0;
-            const barColor = pct > 90 ? 'bg-rose-500' : pct > 70 ? 'bg-amber-400' : 'bg-emerald-700';
             const saldoEl = document.getElementById('displaySaldo');
             if (saldoEl) {
                 saldoEl.innerText = saldo.toFixed(2);
-                saldoEl.className = `font-bold ${saldo < 0 ? 'text-rose-500' : 'text-emerald-700'}`;
+                saldoEl.className = `text-3xl font-bold ${saldo < 0 ? 'text-red-300' : 'text-white'}`;
             }
             const barEl = document.getElementById('budgetBar');
-            if (barEl) barEl.className = `${barColor} h-2.5 rounded-full transition-all`;
-            if (barEl) barEl.style.width = pct + '%';
+            if (barEl) {
+                barEl.style.width = pct + '%';
+                if (pct > 90) barEl.style.background = 'linear-gradient(90deg, #f43f5e 0%, #ec4899 100%)';
+                else if (pct > 70) barEl.style.background = 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%)';
+                else barEl.style.background = 'linear-gradient(90deg, #34d399 0%, #10b981 100%)';
+            }
             if (document.getElementById('inputBudget')) document.getElementById('inputBudget').value = state.budget;
 
             const container = document.getElementById('items-container');
             if(container) {
                 if (state.items.length === 0) {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-400">Sua lista está vazia. 📷 Escaneie um produto ou adicione manualmente.</div>';
+                    container.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">🛒</div>Sua lista está vazia.<br>Use os botões acima para começar!</div>';
                 } else {
                     container.innerHTML = state.items.map(item => `
-                        <div class="flex items-center p-3 bg-white rounded-lg shadow-sm">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-3 h-6 w-6">
+                        <div class="flex items-center p-5 bg-white rounded-3xl shadow-md hover:shadow-lg transition-all">
+                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-4 h-6 w-6 rounded-lg accent-pink-500">
                             <div class="flex-grow">
-                                <div class="font-semibold ${item.checked ? 'line-through text-gray-400' : ''}">${item.name}</div>
-                                <div class="text-xs text-gray-500">${item.qty || 1}${item.unit || 'un'}</div>
+                                <div class="font-bold text-lg ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}">${item.name}</div>
+                                <div class="text-sm text-gray-500">${item.qty || 1}${item.unit || 'un'}</div>
                             </div>
-                            <div class="font-bold text-emerald-800">R$ ${(item.price || 0).toFixed(2)}</div>
+                            <div class="font-bold text-xl bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">R$ ${(item.price || 0).toFixed(2)}</div>
                         </div>
                     `).join('');
                 }
@@ -200,9 +258,16 @@
             
             const eContainer = document.getElementById('estoque-container');
             if(eContainer) {
-                eContainer.innerHTML = state.estoque.map(i => `
-                    <div class="p-3 bg-white rounded shadow-sm">${i.name}</div>
-                `).join('');
+                if (state.estoque.length === 0) {
+                    eContainer.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">📦</div>Seu estoque está vazio.</div>';
+                } else {
+                    eContainer.innerHTML = state.estoque.map((i, idx) => `
+                        <div class="p-5 bg-white rounded-3xl shadow-md hover:shadow-lg transition-all">
+                            <div class="font-semibold text-gray-800">${i.name}</div>
+                            ${i.qty ? `<div class="text-sm text-gray-500 mt-1">${i.qty}${i.unit || ''}</div>` : ''}
+                        </div>
+                    `).join('');
+                }
             }
         }
 
@@ -361,21 +426,23 @@
             if (!container) return;
             
             if (state.historico.length === 0) {
-                container.innerHTML = '<div class="text-center py-10 text-gray-400">Nenhuma compra registrada ainda.</div>';
+                container.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">📊</div>Nenhuma compra registrada ainda.</div>';
                 return;
             }
             
             container.innerHTML = state.historico.slice().reverse().map(h => {
                 const diff = h.totalSpent - h.totalPlanned;
-                const diffClass = diff > 0 ? 'text-rose-500' : 'text-emerald-600';
+                const diffClass = diff > 0 ? 'bg-gradient-to-r from-red-400 to-pink-500 bg-clip-text text-transparent font-bold' : 'bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent font-bold';
                 const diffSymbol = diff > 0 ? '+' : '';
                 
                 return `
-                    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div class="flex justify-between items-start mb-2">
+                    <div class="bg-white p-6 rounded-3xl shadow-md hover:shadow-lg transition-all">
+                        <div class="flex justify-between items-start mb-3">
                             <div>
-                                <div class="font-bold text-gray-800">${h.date}</div>
-                                <div class="text-xs text-gray-500">${h.itemsCount} ${h.itemsCount === 1 ? 'item' : 'itens'}</div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <div class="font-bold text-lg text-gray-800">${h.date}</div>
+                                    <span class="bg-gradient-to-r from-blue-100 to-purple-100 text-purple-600 text-xs px-3 py-1 rounded-full font-bold">${h.itemsCount} ${h.itemsCount === 1 ? 'item' : 'itens'}</span>
+                                </div>
                             </div>
                             <div class="text-right">
                                 <div class="text-sm text-gray-500">Planejado: <span class="font-semibold">R$ ${h.totalPlanned.toFixed(2)}</span></div>
@@ -383,17 +450,28 @@
                                 <div class="text-sm font-bold ${diffClass}">${diffSymbol}R$ ${Math.abs(diff).toFixed(2)}</div>
                             </div>
                         </div>
-                        <details class="text-xs text-gray-600 mt-2">
-                            <summary class="cursor-pointer hover:text-emerald-700">Ver itens</summary>
-                            <ul class="mt-2 space-y-1 pl-4">
-                                ${h.items.map(i => `<li>• ${i.name} - ${i.qty}${i.unit} - R$ ${i.price.toFixed(2)}</li>`).join('')}
-                            </ul>
+                        <details class="group">
+                            <summary class="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center gap-2 py-2">
+                                <span>Ver itens</span>
+                                <span class="group-open:rotate-180 transition-transform">▼</span>
+                            </summary>
+                            <div class="mt-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl">
+                                <ul class="space-y-2">
+                                    ${h.items.map(i => `
+                                        <li class="flex justify-between items-center py-1">
+                                            <span class="text-gray-700">${i.name}</span>
+                                            <span class="font-medium text-orange-600">R$ ${i.price.toFixed(2)}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
                         </details>
                     </div>
                 `;
             }).join('');
         }
 
+        showTab('lista');
         render();
     </script>
 </body>
