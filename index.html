@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Kitchen & Market</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/tesseract.js@v4/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content.hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 pb-20">
+
+    <header class="bg-emerald-700 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl font-bold">🛒 Smart Kitchen</h1>
+            <div class="flex gap-2">
+                <button onclick="openScanner()" class="bg-amber-400 text-emerald-900 p-2 rounded-lg font-bold">📷</button>
+                <button id="btnInstalar" class="bg-white text-emerald-700 px-3 py-1 rounded text-sm font-bold hidden">📲</button>
+            </div>
+        </div>
+        <nav class="flex gap-2">
+            <button onclick="showTab('lista')" class="tab-btn flex-1 py-2 bg-emerald-800 rounded font-semibold" data-tab="lista">🛒 Lista</button>
+            <button onclick="showTab('estoque')" class="tab-btn flex-1 py-2 rounded" data-tab="estoque">🏠 Estoque</button>
+            <button onclick="showTab('receitas')" class="tab-btn flex-1 py-2 rounded" data-tab="receitas">👨‍🍳 Receitas</button>
+        </nav>
+    </header>
+
+    <main id="app" class="p-4 max-w-2xl mx-auto">
+        <div id="lista" class="tab-content">
+            <div class="bg-white p-4 rounded-xl shadow-sm mb-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-xs text-gray-500">Orçamento (R$)</label><input type="number" id="inputBudget" onchange="updateBudget()" class="w-full border rounded p-1" value="200"></div>
+                    <div><label class="text-xs text-gray-500">Saldo (R$)</label><div id="displaySaldo" class="font-bold text-emerald-700">0.00</div></div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2"><div id="budgetBar" class="bg-emerald-700 h-2.5 rounded-full" style="width: 0%"></div></div>
+            </div>
+            <div id="items-container" class="space-y-2"></div>
+        </div>
+
+        <div id="estoque" class="tab-content hidden">
+            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="w-full mb-4 py-3 bg-amber-400 text-emerald-900 font-bold rounded-lg shadow-md">🧾 Importar Nota Fiscal</button>
+            <div id="estoque-container" class="space-y-2"></div>
+        </div>
+
+        <div id="receitas" class="tab-content hidden">
+            <div class="text-center py-10 text-gray-500">Funcionalidade de Receitas em breve...</div>
+        </div>
+    </main>
+
+    <!-- Modal Preço -->
+    <div id="modalPreco" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6">
+            <h2 id="tituloProduto" class="text-lg font-bold mb-4">Adicionar Produto</h2>
+            <label class="text-sm text-gray-600">Preço do item (R$):</label>
+            <input type="number" id="inputPrecoItem" class="w-full border p-2 rounded mb-4" placeholder="0.00" step="0.01">
+            <div class="flex gap-2">
+                <button onclick="confirmarAdicao()" class="flex-1 bg-emerald-700 text-white py-2 rounded">✅ Confirmar</button>
+                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nota -->
+    <div id="modalNota" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl p-6">
+            <h2 class="text-xl font-bold mb-4">Ler Nota Fiscal</h2>
+            <input type="file" id="fileNota" accept="image/*" class="w-full mb-4">
+            <textarea id="textNota" class="w-full border rounded p-2 mb-4" placeholder="Ou cole o texto aqui..." rows="5"></textarea>
+            <div class="flex gap-2">
+                <button onclick="processarNota()" class="flex-1 bg-emerald-700 text-white py-2 rounded">Processar</button>
+                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = JSON.parse(localStorage.getItem('appState')) || { budget: 200, items: [], estoque: [] };
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+
+        function save() { localStorage.setItem('appState', JSON.stringify(state)); render(); }
+        
+        function updateBudget() {
+            state.budget = parseFloat(document.getElementById('inputBudget').value);
+            save();
+        }
+
+        function render() {
+            const container = document.getElementById('items-container');
+            if(container) {
+                container.innerHTML = state.items.map(item => `
+                    <div class="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-3 h-6 w-6">
+                        <div class="flex-grow font-semibold">${item.name}</div>
+                        <div class="font-bold text-emerald-800">R$ ${item.price.toFixed(2)}</div>
+                    </div>
+                `).join('');
+            }
+            
+            const eContainer = document.getElementById('estoque-container');
+            if(eContainer) {
+                eContainer.innerHTML = state.estoque.map(i => `
+                    <div class="p-3 bg-white rounded shadow-sm">${i.name}</div>
+                `).join('');
+            }
+        }
+
+        let tempProduct = null;
+
+        function toggleItem(id) {
+            const item = state.items.find(i => i.id === id);
+            if (item) item.checked = !item.checked;
+            save();
+        }
+
+        async function openScanner() {
+            const modal = document.createElement('div');
+            modal.id = 'tempScanner';
+            modal.className = 'fixed inset-0 bg-black z-[60] flex flex-col';
+            modal.innerHTML = `
+                <div id="reader" class="flex-grow"></div>
+                <button onclick="document.getElementById('tempScanner').remove()" class="p-4 bg-rose-500 text-white font-bold">Fechar Câmera</button>
+            `;
+            document.body.appendChild(modal);
+            
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    scanner.stop();
+                    modal.remove();
+                    buscarProduto(text);
+                }
+            );
+        }
+
+        async function buscarProduto(ean) {
+            try {
+                const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json`);
+                const data = await res.json();
+                if (data.status === 1) {
+                    tempProduct = {
+                        name: data.product.product_name || 'Produto sem nome',
+                        cat: data.product.categories_tags ? data.product.categories_tags[0].replace('en:', '') : 'Outros'
+                    };
+                    document.getElementById('tituloProduto').innerText = tempProduct.name;
+                    document.getElementById('modalPreco').classList.remove('hidden');
+                    document.getElementById('inputPrecoItem').focus();
+                } else {
+                    alert('Produto não encontrado.');
+                }
+            } catch (e) { alert('Erro na busca.'); }
+        }
+
+        function confirmarAdicao() {
+            const p = parseFloat(document.getElementById('inputPrecoItem').value);
+            if (!p || p <= 0) return alert("Digite o preço.");
+            state.items.push({ id: Date.now(), ...tempProduct, price: p, checked: true, qty: 1, unit: 'un' });
+            save();
+            document.getElementById('modalPreco').classList.add('hidden');
+            document.getElementById('inputPrecoItem').value = '';
+        }
+
+        async function processarNota() {
+            const file = document.getElementById('fileNota').files[0];
+            const text = document.getElementById('textNota').value;
+            let final = text;
+            if (file) {
+                const res = await Tesseract.recognize(file, 'por');
+                final = res.data.text;
+            }
+            if (!final) return alert("Nada para processar.");
+            final.split('\n').forEach(l => {
+                if (l.trim().length > 3) state.estoque.push({ name: l.trim() });
+            });
+            save();
+            document.getElementById('modalNota').classList.add('hidden');
+        }
+
+        render();
+    </script>
+</body>
+</html>
