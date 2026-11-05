@@ -26,6 +26,7 @@
             <button onclick="showTab('lista')" class="tab-btn flex-1 py-2 bg-emerald-800 rounded font-semibold" data-tab="lista">🛒 Lista</button>
             <button onclick="showTab('estoque')" class="tab-btn flex-1 py-2 rounded" data-tab="estoque">🏠 Estoque</button>
             <button onclick="showTab('receitas')" class="tab-btn flex-1 py-2 rounded" data-tab="receitas">👨‍🍳 Receitas</button>
+            <button onclick="showTab('relatorio')" class="tab-btn flex-1 py-2 rounded" data-tab="relatorio">📊 Gastos</button>
         </nav>
     </header>
 
@@ -39,6 +40,9 @@
                 <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2"><div id="budgetBar" class="bg-emerald-700 h-2.5 rounded-full" style="width: 0%"></div></div>
             </div>
             <div id="items-container" class="space-y-2"></div>
+            <div class="mt-6">
+                <button onclick="finalizarCompra()" class="w-full py-4 bg-emerald-700 text-white font-bold rounded-xl shadow-lg">✅ Finalizar Compra</button>
+            </div>
         </div>
 
         <div id="estoque" class="tab-content hidden">
@@ -48,6 +52,13 @@
 
         <div id="receitas" class="tab-content hidden">
             <div class="text-center py-10 text-gray-500">Funcionalidade de Receitas em breve...</div>
+        </div>
+
+        <div id="relatorio" class="tab-content hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm mb-4">
+                <h2 class="text-lg font-bold mb-4">📊 Histórico de Compras</h2>
+                <div id="historico-container" class="space-y-3"></div>
+            </div>
         </div>
     </main>
 
@@ -78,14 +89,28 @@
     </div>
 
     <script>
-        let state = JSON.parse(localStorage.getItem('appState')) || { budget: 200, items: [], estoque: [] };
+        let state = JSON.parse(localStorage.getItem('appState')) || { budget: 200, items: [], estoque: [], historico: [] };
 
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('bg-emerald-800', b.dataset.tab === tabId);
+            });
+            if(tabId === 'relatorio') renderHistorico();
         }
 
-        function save() { localStorage.setItem('appState', JSON.stringify(state)); render(); }
+        function save() { localStorage.setItem('appState', JSON.stringify(state)); render(); renderHistorico(); }
+
+        function toast(msg, type = 'success') {
+            const colors = { success: 'bg-emerald-600', error: 'bg-rose-500', info: 'bg-amber-500' };
+            const t = document.createElement('div');
+            t.className = `fixed bottom-20 left-1/2 -translate-x-1/2 ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg z-[70] text-sm font-semibold`;
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2500);
+        }
+        
         
         function updateBudget() {
             state.budget = parseFloat(document.getElementById('inputBudget').value);
@@ -93,15 +118,37 @@
         }
 
         function render() {
+            // Orçamento
+            const total = state.items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
+            const saldo = (state.budget || 0) - total;
+            const pct = state.budget > 0 ? Math.min(100, (total / state.budget) * 100) : 0;
+            const barColor = pct > 90 ? 'bg-rose-500' : pct > 70 ? 'bg-amber-400' : 'bg-emerald-700';
+            const saldoEl = document.getElementById('displaySaldo');
+            if (saldoEl) {
+                saldoEl.innerText = saldo.toFixed(2);
+                saldoEl.className = `font-bold ${saldo < 0 ? 'text-rose-500' : 'text-emerald-700'}`;
+            }
+            const barEl = document.getElementById('budgetBar');
+            if (barEl) barEl.className = `${barColor} h-2.5 rounded-full transition-all`;
+            if (barEl) barEl.style.width = pct + '%';
+            if (document.getElementById('inputBudget')) document.getElementById('inputBudget').value = state.budget;
+
             const container = document.getElementById('items-container');
             if(container) {
-                container.innerHTML = state.items.map(item => `
-                    <div class="flex items-center p-3 bg-white rounded-lg shadow-sm">
-                        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-3 h-6 w-6">
-                        <div class="flex-grow font-semibold">${item.name}</div>
-                        <div class="font-bold text-emerald-800">R$ ${item.price.toFixed(2)}</div>
-                    </div>
-                `).join('');
+                if (state.items.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-400">Sua lista está vazia. 📷 Escaneie um produto ou adicione manualmente.</div>';
+                } else {
+                    container.innerHTML = state.items.map(item => `
+                        <div class="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-3 h-6 w-6">
+                            <div class="flex-grow">
+                                <div class="font-semibold ${item.checked ? 'line-through text-gray-400' : ''}">${item.name}</div>
+                                <div class="text-xs text-gray-500">${item.qty || 1}${item.unit || 'un'}</div>
+                            </div>
+                            <div class="font-bold text-emerald-800">R$ ${(item.price || 0).toFixed(2)}</div>
+                        </div>
+                    `).join('');
+                }
             }
             
             const eContainer = document.getElementById('estoque-container');
@@ -153,14 +200,14 @@
                     document.getElementById('modalPreco').classList.remove('hidden');
                     document.getElementById('inputPrecoItem').focus();
                 } else {
-                    alert('Produto não encontrado.');
+                    toast('Produto não encontrado.', 'error');
                 }
-            } catch (e) { alert('Erro na busca.'); }
+            } catch (e) { toast('Erro na busca.', 'error'); }
         }
 
         function confirmarAdicao() {
             const p = parseFloat(document.getElementById('inputPrecoItem').value);
-            if (!p || p <= 0) return alert("Digite o preço.");
+            if (!p || p <= 0) return toast("Digite o preço.", 'error');
             state.items.push({ id: Date.now(), ...tempProduct, price: p, checked: true, qty: 1, unit: 'un' });
             save();
             document.getElementById('modalPreco').classList.add('hidden');
@@ -175,12 +222,75 @@
                 const res = await Tesseract.recognize(file, 'por');
                 final = res.data.text;
             }
-            if (!final) return alert("Nada para processar.");
+            if (!final) return toast("Nada para processar.", 'error');
             final.split('\n').forEach(l => {
                 if (l.trim().length > 3) state.estoque.push({ name: l.trim() });
             });
             save();
             document.getElementById('modalNota').classList.add('hidden');
+        }
+
+        function finalizarCompra() {
+            const checkedItems = state.items.filter(i => i.checked);
+            if (checkedItems.length === 0) {
+                return toast("Nenhum item marcado para finalizar.", 'error');
+            }
+            
+            const totalPlanned = state.budget;
+            const totalSpent = checkedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            
+            const compra = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('pt-BR'),
+                totalPlanned: totalPlanned,
+                totalSpent: totalSpent,
+                itemsCount: checkedItems.length,
+                items: checkedItems.map(i => ({ name: i.name, qty: i.qty, unit: i.unit, price: i.price }))
+            };
+            
+            state.historico.push(compra);
+            state.items = state.items.filter(i => !i.checked);
+            save();
+            toast("Compra finalizada com sucesso! ✅");
+            showTab('relatorio');
+        }
+
+        function renderHistorico() {
+            const container = document.getElementById('historico-container');
+            if (!container) return;
+            
+            if (state.historico.length === 0) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">Nenhuma compra registrada ainda.</div>';
+                return;
+            }
+            
+            container.innerHTML = state.historico.slice().reverse().map(h => {
+                const diff = h.totalSpent - h.totalPlanned;
+                const diffClass = diff > 0 ? 'text-rose-500' : 'text-emerald-600';
+                const diffSymbol = diff > 0 ? '+' : '';
+                
+                return `
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="font-bold text-gray-800">${h.date}</div>
+                                <div class="text-xs text-gray-500">${h.itemsCount} ${h.itemsCount === 1 ? 'item' : 'itens'}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-500">Planejado: <span class="font-semibold">R$ ${h.totalPlanned.toFixed(2)}</span></div>
+                                <div class="text-sm text-gray-500">Gasto: <span class="font-semibold">R$ ${h.totalSpent.toFixed(2)}</span></div>
+                                <div class="text-sm font-bold ${diffClass}">${diffSymbol}R$ ${Math.abs(diff).toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <details class="text-xs text-gray-600 mt-2">
+                            <summary class="cursor-pointer hover:text-emerald-700">Ver itens</summary>
+                            <ul class="mt-2 space-y-1 pl-4">
+                                ${h.items.map(i => `<li>• ${i.name} - ${i.qty}${i.unit} - R$ ${i.price.toFixed(2)}</li>`).join('')}
+                            </ul>
+                        </details>
+                    </div>
+                `;
+            }).join('');
         }
 
         render();
