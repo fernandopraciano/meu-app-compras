@@ -39,6 +39,12 @@
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2"><div id="budgetBar" class="bg-emerald-700 h-2.5 rounded-full" style="width: 0%"></div></div>
             </div>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="openScanner()" class="bg-amber-400 text-emerald-900 py-3 rounded-xl font-bold shadow-md">📷 Escanear</button>
+                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-md">➕ Adicionar</button>
+            </div>
+
             <div id="items-container" class="space-y-2"></div>
             <div class="mt-6">
                 <button onclick="finalizarCompra()" class="w-full py-4 bg-emerald-700 text-white font-bold rounded-xl shadow-lg">✅ Finalizar Compra</button>
@@ -84,6 +90,47 @@
             <div class="flex gap-2">
                 <button onclick="processarNota()" class="flex-1 bg-emerald-700 text-white py-2 rounded">Processar</button>
                 <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Manual -->
+    <div id="modalManual" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6">
+            <h2 class="text-lg font-bold mb-4">Adicionar Produto Manualmente</h2>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-600">Nome do Produto</label>
+                    <input type="text" id="manualName" class="w-full border p-2 rounded" placeholder="Ex: Maçã, Leite...">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-600">Tipo de Produto</label>
+                    <select id="manualType" onchange="toggleManualType()" class="w-full border p-2 rounded">
+                        <option value="un">Unidade / Outros</option>
+                        <option value="kg">Pesável (Kg / Gramas)</option>
+                    </select>
+                </div>
+                <div id="fieldsUnidade">
+                    <label class="text-xs text-gray-600">Preço Total (R$)</label>
+                    <input type="number" id="manualPrice" step="0.01" class="w-full border p-2 rounded" placeholder="0.00">
+                </div>
+                <div id="fieldsPesavel" class="hidden space-y-2">
+                    <div>
+                        <label class="text-xs text-gray-600">Preço por Kg (R$)</label>
+                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border p-2 rounded" placeholder="0.00" oninput="calcularPesavel()">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-600">Peso (em kg ou g ex: 0.500 ou 500)</label>
+                        <input type="number" id="manualWeight" step="0.001" class="w-full border p-2 rounded" placeholder="Ex: 0.500 (kg) ou 500 (g)" oninput="calcularPesavel()">
+                    </div>
+                    <div class="text-sm font-bold text-emerald-800">
+                        Valor Calculado: R$ <span id="manualCalculatedTotal">0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-5">
+                <button onclick="adicionarManual()" class="flex-1 bg-emerald-700 text-white py-2 rounded font-bold">Adicionar</button>
+                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="flex-1 bg-gray-200 py-2 rounded">Cancelar</button>
             </div>
         </div>
     </div>
@@ -228,6 +275,60 @@
             });
             save();
             document.getElementById('modalNota').classList.add('hidden');
+        }
+
+        function toggleManualType() {
+            const type = document.getElementById('manualType').value;
+            document.getElementById('fieldsUnidade').classList.toggle('hidden', type === 'kg');
+            document.getElementById('fieldsPesavel').classList.toggle('hidden', type === 'un');
+        }
+
+        function calcularPesavel() {
+            let priceKg = parseFloat(document.getElementById('manualPriceKg').value) || 0;
+            let weight = parseFloat(document.getElementById('manualWeight').value) || 0;
+            
+            // Heurística simples: se o peso for maior que 10, assumimos que é em gramas
+            if (weight > 10) weight = weight / 1000;
+            
+            const total = priceKg * weight;
+            document.getElementById('manualCalculatedTotal').innerText = total.toFixed(2);
+            return { total, weight };
+        }
+
+        function adicionarManual() {
+            const name = document.getElementById('manualName').value;
+            const type = document.getElementById('manualType').value;
+            
+            if (!name) return toast("Digite o nome do produto.", 'error');
+
+            let item = { id: Date.now(), name, checked: true, cat: 'Manual' };
+
+            if (type === 'un') {
+                const price = parseFloat(document.getElementById('manualPrice').value);
+                if (!price || price <= 0) return toast("Digite o preço.", 'error');
+                item.price = price;
+                item.qty = 1;
+                item.unit = 'un';
+            } else {
+                const calc = calcularPesavel();
+                if (!calc.total || calc.total <= 0) return toast("Preencha o preço e o peso.", 'error');
+                item.price = calc.total;
+                item.qty = calc.weight;
+                item.unit = 'kg';
+            }
+
+            state.items.push(item);
+            save();
+            document.getElementById('modalManual').classList.add('hidden');
+            
+            // Limpar campos
+            document.getElementById('manualName').value = '';
+            document.getElementById('manualPrice').value = '';
+            document.getElementById('manualPriceKg').value = '';
+            document.getElementById('manualWeight').value = '';
+            document.getElementById('manualCalculatedTotal').innerText = '0.00';
+            
+            toast("Produto adicionado!");
         }
 
         function finalizarCompra() {
