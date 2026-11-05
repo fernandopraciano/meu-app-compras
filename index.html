@@ -8,174 +8,172 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/tesseract.js@v4/dist/tesseract.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .tab-content.hidden { display: none; }
-        .btn-action { transition: all 0.2s ease; transform: translateY(0); }
-        .btn-action:active { transform: translateY(2px); box-shadow: none; }
-        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        
-        /* Animação suave de entrada */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-item { animation: fadeInUp 0.4s ease-out forwards; }
+        .glass-card { background: #ffffff; border: 1px solid #f0f0f0; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .btn-main { transition: all 0.25s ease; }
+        .btn-main:active { transform: scale(0.98); }
+        .tab-btn { color: #9ca3af; transition: all 0.3s; }
+        .tab-btn.active { color: #1f2937; font-weight: 700; }
+        .animate-item { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 pb-24" style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
 
-    <header class="bg-gradient-to-r from-rose-500 via-orange-500 to-purple-600 text-white p-4 sticky top-0 z-40 shadow-lg rounded-b-3xl">
-        <div class="flex justify-between items-center">
+    <header class="p-6 pb-2">
+        <div class="flex justify-between items-center mb-6">
             <div>
-                <h1 class="text-2xl font-bold leading-tight">Smart Kitchen</h1>
-                <p class="text-xs opacity-80">Seu mercado inteligente</p>
+                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Lista de Hoje</h1>
+                <p class="text-sm text-gray-400 font-medium mt-1">Gerencie suas compras</p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="openScanner()" class="btn-action bg-white text-orange-500 p-3 rounded-full font-bold shadow-lg">📷</button>
-                <button id="btnInstalar" class="btn-action bg-white/20 text-white px-3 py-1 rounded-full text-sm font-bold hidden">📲</button>
-            </div>
+            <button onclick="openScanner()" class="p-4 bg-gray-900 text-white rounded-2xl">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6H4zM4 4h6v6H4zM14 14h6v6h-6zM14 4h6v6h-6z"/></svg>
+            </button>
         </div>
     </header>
 
     <main id="app" class="p-4 max-w-2xl mx-auto">
         <div id="lista" class="tab-content">
-            <div class="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 rounded-3xl shadow-lg mb-4 text-white">
-                <h3 class="text-sm opacity-90 mb-1">Orçamento Mensal</h3>
-                <div class="flex items-end gap-4 mb-3">
-                    <div class="flex-1">
-                        <input type="number" id="inputBudget" onchange="updateBudget()" class="w-full bg-white/20 border-0 rounded-2xl p-3 text-2xl font-bold text-white placeholder-white/50 backdrop-blur" value="200">
-                    </div>
+            <div class="bg-gray-900 p-6 rounded-3xl shadow-sm mb-6 text-white">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <div class="text-xs opacity-75">Saldo</div>
-                        <div id="displaySaldo" class="text-3xl font-bold">0.00</div>
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Orçamento</span>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-gray-400 font-bold">R$</span>
+                            <input type="number" id="inputBudget" onchange="updateBudget()" class="bg-transparent text-2xl font-black text-white w-24 border-b border-gray-700 focus:outline-none focus:border-white" value="200">
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Disponível</span>
+                        <div id="displaySaldo" class="text-2xl font-black text-emerald-400 mt-1">0.00</div>
                     </div>
                 </div>
-                <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden backdrop-blur">
-                    <div id="budgetBar" class="h-3 rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);"></div>
+                <div class="w-full bg-gray-800 rounded-full h-2">
+                    <div id="budgetBar" class="h-2 rounded-full bg-emerald-400 transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-3 mb-6">
-                <button onclick="openScanner()" class="btn-action bg-gradient-to-br from-orange-400 to-pink-500 text-white py-5 rounded-3xl font-bold shadow-lg text-lg">
-                    📷<br><span class="text-sm">Escanear</span>
+            <div class="flex gap-3 mb-6">
+                <button onclick="openScanner()" class="btn-main flex-1 bg-white border border-gray-200 p-4 rounded-2xl font-bold text-gray-800 flex items-center justify-center gap-2 shadow-sm">
+                    <span>📷</span> Escanear
                 </button>
-                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="btn-action bg-gradient-to-br from-teal-400 to-blue-500 text-white py-5 rounded-3xl font-bold shadow-lg text-lg">
-                    ➕<br><span class="text-sm">Adicionar</span>
+                <button onclick="document.getElementById('modalManual').classList.remove('hidden')" class="btn-main flex-1 bg-emerald-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-sm">
+                    <span>➕</span> Adicionar
                 </button>
             </div>
 
             <div id="items-container" class="space-y-3 mb-6"></div>
-            <button onclick="finalizarCompra()" class="btn-action w-full py-5 bg-gradient-to-r from-green-400 to-emerald-500 text-white font-bold rounded-3xl shadow-xl text-lg">
-                ✅ Finalizar Compra
+            <button onclick="finalizarCompra()" class="btn-main w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-sm text-center">
+                Finalizar Compra
             </button>
         </div>
 
         <div id="estoque" class="tab-content hidden">
-            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="btn-action w-full mb-5 py-5 bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold rounded-3xl shadow-lg text-lg">
-                🧾 Importar Nota Fiscal
+            <button onclick="document.getElementById('modalNota').classList.remove('hidden')" class="btn-main w-full mb-6 py-4 bg-emerald-600 text-white font-bold rounded-2xl shadow-sm text-center">
+                📸 Escanear Nota Fiscal
             </button>
             <div id="estoque-container" class="space-y-3"></div>
         </div>
 
         <div id="receitas" class="tab-content hidden">
-            <div class="bg-white p-10 rounded-3xl shadow-lg text-center">
-                <div class="text-6xl mb-3">👨‍🍳</div>
-                <p class="text-gray-500">Funcionalidade de Receitas em breve...</p>
+            <div class="p-12 text-center">
+                <div class="text-6xl mb-4">👨‍🍳</div>
+                <h2 class="text-lg font-bold text-gray-900 mb-2">Receitas em Breve</h2>
+                <p class="text-gray-400">Sugestões de pratos com seus ingredientes virão em breve.</p>
             </div>
         </div>
 
         <div id="relatorio" class="tab-content hidden">
-            <div class="bg-white p-6 rounded-3xl shadow-lg mb-4">
-                <h2 class="text-2xl font-bold mb-5 bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">📊 Histórico de Compras</h2>
-                <div id="historico-container" class="space-y-4"></div>
-            </div>
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6 tracking-tight">Histórico</h2>
+            <div id="historico-container" class="space-y-4 mb-24"></div>
         </div>
     </main>
 
     <!-- Bottom Navigation -->
-    <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-lg rounded-full shadow-2xl px-2 py-2 flex gap-1 max-w-md w-[calc(100%-2rem)] border border-white/50">
-        <button onclick="showTab('lista')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="lista">
-            <span class="text-xl">🛒</span>
-            <span class="text-[10px] font-semibold">Lista</span>
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-6 left-6 right-6 z-50 bg-white border border-gray-100 shadow-2xl rounded-3xl p-3 flex justify-around items-center">
+        <button onclick="showTab('lista')" class="tab-btn active flex flex-col items-center gap-1 p-2" data-tab="lista">
+            <span class="text-2xl">📋</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Lista</span>
         </button>
-        <button onclick="showTab('estoque')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="estoque">
-            <span class="text-xl">🏠</span>
-            <span class="text-[10px] font-semibold">Estoque</span>
+        <button onclick="showTab('estoque')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="estoque">
+            <span class="text-2xl">🏠</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Estoque</span>
         </button>
-        <button onclick="showTab('receitas')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="receitas">
-            <span class="text-xl">👨‍🍳</span>
-            <span class="text-[10px] font-semibold">Receitas</span>
+        <button onclick="showTab('receitas')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="receitas">
+            <span class="text-2xl">👨‍🍳</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Receitas</span>
         </button>
-        <button onclick="showTab('relatorio')" class="tab-btn flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-full transition-all" data-tab="relatorio">
-            <span class="text-xl">📊</span>
-            <span class="text-[10px] font-semibold">Gastos</span>
+        <button onclick="showTab('relatorio')" class="tab-btn flex flex-col items-center gap-1 p-2" data-tab="relatorio">
+            <span class="text-2xl">📈</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Gastos</span>
         </button>
     </nav>
 
     <!-- Modal Preço -->
-    <div id="modalPreco" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
-            <h2 id="tituloProduto" class="text-xl font-bold mb-6 text-gray-800">Adicionar Produto</h2>
-            <label class="text-sm text-gray-600 font-medium">Preço do item (R$):</label>
-            <input type="number" id="inputPrecoItem" class="w-full border-2 border-gray-200 p-4 rounded-2xl mb-6 text-lg focus:border-orange-400 focus:outline-none transition-all" placeholder="0.00" step="0.01">
+    <div id="modalPreco" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
+            <h2 id="tituloProduto" class="text-2xl font-black text-gray-900 mb-6">Qual o preço?</h2>
+            <input type="number" id="inputPrecoItem" class="w-full border border-gray-200 p-4 rounded-2xl mb-6 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00" step="0.01">
             <div class="flex gap-3">
-                <button onclick="confirmarAdicao()" class="btn-action flex-1 bg-gradient-to-r from-green-400 to-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg">✅ Confirmar</button>
-                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+                <button onclick="confirmarAdicao()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Confirmar</button>
+                <button onclick="document.getElementById('modalPreco').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Nota -->
-    <div id="modalNota" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800">🧾 Ler Nota Fiscal</h2>
+    <div id="modalNota" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
+            <h2 class="text-2xl font-black text-gray-900 mb-6">📸 Ler Nota</h2>
             <input type="file" id="fileNota" accept="image/*" class="w-full mb-4 p-3 border-2 border-dashed border-gray-300 rounded-2xl">
-            <textarea id="textNota" class="w-full border-2 border-gray-200 rounded-2xl p-4 mb-6 focus:border-orange-400 focus:outline-none transition-all" placeholder="Ou cole o texto aqui..." rows="5"></textarea>
+            <textarea id="textNota" class="w-full border border-gray-200 rounded-2xl p-4 mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Ou cole o texto..." rows="4"></textarea>
             <div class="flex gap-3">
-                <button onclick="processarNota()" class="btn-action flex-1 bg-gradient-to-r from-orange-400 to-pink-500 text-white py-4 rounded-2xl font-bold shadow-lg">Processar</button>
-                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+                <button onclick="processarNota()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Processar</button>
+                <button onclick="document.getElementById('modalNota').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Adicionar Manual -->
-    <div id="modalManual" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
-            <h2 class="text-xl font-bold mb-6 text-gray-800">Adicionar Produto</h2>
+    <div id="modalManual" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end justify-center p-4">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl max-w-md">
+            <h2 class="text-2xl font-black text-gray-900 mb-6">Novo Produto</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="text-sm text-gray-600 font-medium block mb-2">Nome do Produto</label>
-                    <input type="text" id="manualName" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="Ex: Maçã, Leite...">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Produto</label>
+                    <input type="text" id="manualName" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Ex: Maçã">
                 </div>
                 <div>
-                    <label class="text-sm text-gray-600 font-medium block mb-2">Tipo de Produto</label>
-                    <select id="manualType" onchange="toggleManualType()" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all">
-                        <option value="un">Unidade / Outros</option>
-                        <option value="kg">Pesável (Kg / Gramas)</option>
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Tipo</label>
+                    <select id="manualType" onchange="toggleManualType()" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="un">Unidade</option>
+                        <option value="kg">Pesável (Kg)</option>
                     </select>
                 </div>
                 <div id="fieldsUnidade">
-                    <label class="text-sm text-gray-600 font-medium block mb-2">Preço Total (R$)</label>
-                    <input type="number" id="manualPrice" step="0.01" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="0.00">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Preço (R$)</label>
+                    <input type="number" id="manualPrice" step="0.01" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00">
                 </div>
-                <div id="fieldsPesavel" class="hidden space-y-3">
+                <div id="fieldsPesavel" class="hidden space-y-4">
                     <div>
-                        <label class="text-sm text-gray-600 font-medium block mb-2">Preço por Kg (R$)</label>
-                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="0.00" oninput="calcularPesavel()">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Preço/Kg (R$)</label>
+                        <input type="number" id="manualPriceKg" step="0.01" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00" oninput="calcularPesavel()">
                     </div>
                     <div>
-                        <label class="text-sm text-gray-600 font-medium block mb-2">Peso (kg ou g)</label>
-                        <input type="number" id="manualWeight" step="0.001" class="w-full border-2 border-gray-200 p-4 rounded-2xl focus:border-blue-400 focus:outline-none transition-all" placeholder="Ex: 0.500 ou 500" oninput="calcularPesavel()">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">Peso (kg ou g)</label>
+                        <input type="number" id="manualWeight" step="0.001" class="w-full border border-gray-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.500">
                     </div>
-                    <div class="bg-gradient-to-r from-orange-50 to-pink-50 p-4 rounded-2xl">
-                        <div class="text-sm text-gray-600 mb-1">Valor Calculado:</div>
-                        <div class="text-2xl font-bold text-orange-600">R$ <span id="manualCalculatedTotal">0.00</span></div>
+                    <div class="bg-gray-50 p-4 rounded-2xl">
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total</div>
+                        <div class="text-2xl font-black text-emerald-600">R$ <span id="manualCalculatedTotal">0.00</span></div>
                     </div>
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button onclick="adicionarManual()" class="btn-action flex-1 bg-gradient-to-r from-teal-400 to-blue-500 text-white py-4 rounded-2xl font-bold shadow-lg">Adicionar</button>
-                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="btn-action flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
+                <button onclick="adicionarManual()" class="btn-main flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold">Adicionar</button>
+                <button onclick="document.getElementById('modalManual').classList.add('hidden')" class="btn-main flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold">Cancelar</button>
             </div>
         </div>
     </div>
@@ -187,15 +185,7 @@
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
             document.querySelectorAll('.tab-btn').forEach(b => {
-                if (b.dataset.tab === tabId) {
-                    b.style.background = 'linear-gradient(135deg, #fb923c 0%, #ec4899 100%)';
-                    b.style.color = 'white';
-                    b.style.boxShadow = '0 4px 12px rgba(236,72,153,0.4)';
-                } else {
-                    b.style.background = 'transparent';
-                    b.style.color = 'rgb(107 114 128)';
-                    b.style.boxShadow = 'none';
-                }
+                b.classList.toggle('active', b.dataset.tab === tabId);
             });
             if(tabId === 'relatorio') renderHistorico();
         }
@@ -230,9 +220,9 @@
             const barEl = document.getElementById('budgetBar');
             if (barEl) {
                 barEl.style.width = pct + '%';
-                if (pct > 90) barEl.style.background = 'linear-gradient(90deg, #f43f5e 0%, #ec4899 100%)';
-                else if (pct > 70) barEl.style.background = 'linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%)';
-                else barEl.style.background = 'linear-gradient(90deg, #34d399 0%, #10b981 100%)';
+                if (pct > 90) barEl.style.backgroundColor = '#ef4444';
+                else if (pct > 70) barEl.style.backgroundColor = '#f59e0b';
+                else barEl.style.backgroundColor = '#10b981';
             }
             if (document.getElementById('inputBudget')) document.getElementById('inputBudget').value = state.budget;
 
@@ -242,13 +232,13 @@
                     container.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">🛒</div>Sua lista está vazia.<br>Use os botões acima para começar!</div>';
                 } else {
                     container.innerHTML = state.items.map(item => `
-                        <div class="flex items-center p-5 bg-white/80 backdrop-blur rounded-3xl shadow-sm border border-white/50 animate-item">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-4 h-6 w-6 rounded-lg accent-pink-500 cursor-pointer">
+                        <div class="flex items-center p-4 bg-white border border-gray-100 rounded-3xl shadow-sm animate-item">
+                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})" class="mr-4 h-5 w-5 rounded-md border-gray-300 text-emerald-600 focus:ring-emerald-500">
                             <div class="flex-grow">
-                                <div class="font-bold text-lg ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'} transition-all">${item.name}</div>
-                                <div class="text-xs text-gray-400 font-medium">${item.qty || 1} ${item.unit || 'un'}</div>
+                                <div class="font-bold text-gray-800 ${item.checked ? 'line-through text-gray-300' : ''}">${item.name}</div>
+                                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">${item.qty || 1} ${item.unit || 'un'}</div>
                             </div>
-                            <div class="font-bold text-xl bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">R$ ${(item.price || 0).toFixed(2)}</div>
+                            <div class="font-black text-gray-900">R$ ${(item.price || 0).toFixed(2)}</div>
                         </div>
                     `).join('');
                 }
@@ -257,12 +247,12 @@
             const eContainer = document.getElementById('estoque-container');
             if(eContainer) {
                 if (state.estoque.length === 0) {
-                    eContainer.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">📦</div>Seu estoque está vazio.</div>';
+                    eContainer.innerHTML = '<div class="p-12 text-center text-gray-300"><div class="text-5xl mb-3">📦</div>Seu estoque está vazio.</div>';
                 } else {
                     eContainer.innerHTML = state.estoque.map((i, idx) => `
-                        <div class="p-5 bg-white rounded-3xl shadow-md hover:shadow-lg transition-all">
-                            <div class="font-semibold text-gray-800">${i.name}</div>
-                            ${i.qty ? `<div class="text-sm text-gray-500 mt-1">${i.qty}${i.unit || ''}</div>` : ''}
+                        <div class="p-4 bg-white border border-gray-100 rounded-3xl shadow-sm animate-item">
+                            <div class="font-bold text-gray-800">${i.name}</div>
+                            ${i.qty ? `<div class="text-[11px] font-bold text-gray-400 uppercase tracking-tighter mt-1">${i.qty}${i.unit || ''}</div>` : ''}
                         </div>
                     `).join('');
                 }
@@ -424,49 +414,38 @@
             if (!container) return;
             
             if (state.historico.length === 0) {
-                container.innerHTML = '<div class="bg-white/50 backdrop-blur-sm p-10 rounded-3xl text-center text-gray-400 shadow-sm"><div class="text-5xl mb-3">📊</div>Nenhuma compra registrada ainda.</div>';
+                container.innerHTML = '<div class="p-10 text-center text-gray-300 font-medium">Nenhum registro.</div>';
                 return;
             }
             
-            container.innerHTML = state.historico.slice().reverse().map(h => {
-                const diff = h.totalSpent - h.totalPlanned;
-                const diffClass = diff > 0 ? 'bg-gradient-to-r from-red-400 to-pink-500 bg-clip-text text-transparent font-bold' : 'bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent font-bold';
-                const diffSymbol = diff > 0 ? '+' : '';
-                
-                return `
-                    <div class="bg-white p-6 rounded-3xl shadow-md hover:shadow-lg transition-all">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <div class="font-bold text-lg text-gray-800">${h.date}</div>
-                                    <span class="bg-gradient-to-r from-blue-100 to-purple-100 text-purple-600 text-xs px-3 py-1 rounded-full font-bold">${h.itemsCount} ${h.itemsCount === 1 ? 'item' : 'itens'}</span>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-sm text-gray-500">Planejado: <span class="font-semibold">R$ ${h.totalPlanned.toFixed(2)}</span></div>
-                                <div class="text-sm text-gray-500">Gasto: <span class="font-semibold">R$ ${h.totalSpent.toFixed(2)}</span></div>
-                                <div class="text-sm font-bold ${diffClass}">${diffSymbol}R$ ${Math.abs(diff).toFixed(2)}</div>
-                            </div>
+            container.innerHTML = state.historico.slice().reverse().map(h => `
+                <div class="p-6 bg-white border border-gray-100 rounded-3xl animate-item shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">${h.date}</div>
+                            <div class="font-black text-gray-900">${h.itemsCount} produtos</div>
                         </div>
-                        <details class="group">
-                            <summary class="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center gap-2 py-2">
-                                <span>Ver itens</span>
-                                <span class="group-open:rotate-180 transition-transform">▼</span>
-                            </summary>
-                            <div class="mt-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl">
-                                <ul class="space-y-2">
-                                    ${h.items.map(i => `
-                                        <li class="flex justify-between items-center py-1">
-                                            <span class="text-gray-700">${i.name}</span>
-                                            <span class="font-medium text-orange-600">R$ ${i.price.toFixed(2)}</span>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        </details>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total</div>
+                            <div class="font-black text-emerald-600">R$ ${h.totalSpent.toFixed(2)}</div>
+                        </div>
                     </div>
-                `;
-            }).join('');
+                    <details class="group">
+                        <summary class="list-none cursor-pointer text-xs font-bold text-gray-900 flex items-center justify-between opacity-50 hover:opacity-100 transition-opacity">
+                            DETALHES DA COMPRA
+                            <span class="group-open:rotate-180 transition-transform">↓</span>
+                        </summary>
+                        <div class="mt-4 pt-4 border-t border-gray-50 space-y-2">
+                            ${h.items.map(i => `
+                                <div class="flex justify-between text-sm font-medium">
+                                    <span class="text-gray-500">${i.name}</span>
+                                    <span class="text-gray-900 font-bold">R$ ${i.price.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </details>
+                </div>
+            `).join('');
         }
 
         showTab('lista');
