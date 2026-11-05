@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Kitchen & Market</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://unpkg.com/tesseract.js@v4/dist/tesseract.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -270,24 +270,81 @@
             save();
         }
 
+        let html5Scanner = null;
+
         async function openScanner() {
+            // Evita abrir duas instâncias
+            if (document.getElementById('tempScanner')) return;
+
             const modal = document.createElement('div');
             modal.id = 'tempScanner';
             modal.className = 'fixed inset-0 bg-black z-[60] flex flex-col';
             modal.innerHTML = `
-                <div id="reader" class="flex-grow"></div>
-                <button onclick="document.getElementById('tempScanner').remove()" class="p-4 bg-rose-500 text-white font-bold">Fechar Câmera</button>
+                <div class="p-4 text-white text-center bg-gray-900">
+                    <div class="font-bold text-lg">Escanear Produto</div>
+                    <div class="text-xs text-gray-400 mt-1">Aponte a câmera para o código de barras</div>
+                </div>
+                <div id="reader" class="flex-grow flex items-center justify-center bg-black overflow-hidden"></div>
+                <button onclick="fecharScanner()" class="m-4 p-4 bg-gray-900 border border-gray-700 text-white font-bold rounded-2xl">Fechar</button>
             `;
             document.body.appendChild(modal);
-            
-            const scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                (text) => {
-                    scanner.stop();
-                    modal.remove();
-                    buscarProduto(text);
+
+            try {
+                html5Scanner = new Html5Qrcode("reader");
+
+                const config = {
+                    fps: 15,
+                    qrbox: (viewW, viewH) => {
+                        // Caixa retangular larga para códigos de barras (EAN/UPC são alongados)
+                        const w = Math.floor(viewW * 0.85);
+                        const h = Math.floor(viewH * 0.5);
+                        return { width: w, height: Math.min(h, 300) };
+                    },
+                    aspectRatio: 1.0
+                };
+
+                // Restringe aos formatos de código de barras + QR (melhora a performance)
+                if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+                    const F = Html5QrcodeSupportedFormats;
+                    config.formatsToSupport = [
+                        F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
+                        F.CODE_128, F.CODE_39, F.ITF, F.QR_CODE
+                    ].filter(v => v !== undefined);
                 }
-            );
+
+                await html5Scanner.start(
+                    { facingMode: "environment" },
+                    config,
+                    (text) => {
+                        // Sucesso na leitura - parar e processar
+                        fecharScanner(true);
+                        buscarProduto(text);
+                    },
+                    () => { /* erros de frame são normais, ignorar */ }
+                );
+            } catch (err) {
+                console.error('Erro ao iniciar câmera:', err);
+                fecharScanner();
+                if (err && err.name === 'NotAllowedError') {
+                    toast('Permissão de câmera negada. Libere o acesso nas configurações do navegador.', 'error');
+                } else if (err && err.name === 'NotFoundError') {
+                    toast('Nenhuma câmera encontrada neste dispositivo.', 'error');
+                } else {
+                    toast('Não foi possível abrir a câmera: ' + (err.message || err), 'error');
+                }
+            }
+        }
+
+        async function fecharScanner(silencioso = false) {
+            try {
+                if (html5Scanner) {
+                    await html5Scanner.stop();
+                    await html5Scanner.clear();
+                }
+            } catch (e) { /* ignorar */ }
+            html5Scanner = null;
+            const modal = document.getElementById('tempScanner');
+            if (modal) modal.remove();
         }
 
         async function buscarProduto(ean) {
