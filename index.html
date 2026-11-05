@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Kitchen & Market</title>
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlNtYXJ0IEtpdGNoZW4gJiBNYXJrZXQiLAogICJzaG9ydF9uYW1lIjogIlNtYXJ0IEtpdGNoZW4iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2ZmZmZmZiIsCiAgInRoZW1lX2NvbG9yIjogIiMxMGI5ODEiLAogICJpY29ucyI6IFt7CiAgICAic3JjIjogImh0dHBzOi8vZW1vamkudGVkZHAuY29tL3ZmL3UvMTIxNTk0MDgvMTI4LzEyOC9kYy9zcHJpbmtsZS1jaG9jb2xhdGUtY29uZmV0dGktY2F0LTEyOC5wbmciLAogICAgInNpemVzIjogIjEyOHgxMjgiLAogICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogIH1dCn0=">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://unpkg.com/tesseract.js@v4/dist/tesseract.min.js"></script>
@@ -280,12 +281,21 @@
             modal.id = 'tempScanner';
             modal.className = 'fixed inset-0 bg-black z-[60] flex flex-col';
             modal.innerHTML = `
-                <div class="p-4 text-white text-center bg-gray-900">
-                    <div class="font-bold text-lg">Escanear Produto</div>
-                    <div class="text-xs text-gray-400 mt-1">Aponte a câmera para o código de barras</div>
+                <div class="p-4 text-white text-center bg-gray-900 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-lg">Escanear Produto</div>
+                        <div class="text-xs text-gray-400 mt-0.5">Aponte a câmera para o código de barras</div>
+                    </div>
+                    <button onclick="fecharScanner()" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded-xl text-sm font-bold">✕</button>
                 </div>
-                <div id="reader" class="flex-grow flex items-center justify-center bg-black overflow-hidden"></div>
-                <button onclick="fecharScanner()" class="m-4 p-4 bg-gray-900 border border-gray-700 text-white font-bold rounded-2xl">Fechar</button>
+                <div id="reader" class="flex-grow flex items-center justify-center bg-black overflow-hidden relative"></div>
+                <div class="p-4 bg-gray-900 border-t border-gray-800 flex flex-col gap-2">
+                    <div class="text-xs text-gray-400 text-center">Câmera não abriu ou sem leitor? Digite o EAN (código de barras):</div>
+                    <div class="flex gap-2">
+                        <input type="text" id="manualEanInput" class="flex-1 bg-gray-800 text-white border border-gray-700 px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-emerald-500" placeholder="Ex: 7891000100103">
+                        <button onclick="simularEanManual()" class="bg-emerald-600 text-white px-5 py-3 rounded-xl font-bold text-sm">Buscar</button>
+                    </div>
+                </div>
             `;
             document.body.appendChild(modal);
 
@@ -295,7 +305,6 @@
                 const config = {
                     fps: 15,
                     qrbox: (viewW, viewH) => {
-                        // Caixa retangular larga para códigos de barras (EAN/UPC são alongados)
                         const w = Math.floor(viewW * 0.85);
                         const h = Math.floor(viewH * 0.5);
                         return { width: w, height: Math.min(h, 300) };
@@ -303,7 +312,6 @@
                     aspectRatio: 1.0
                 };
 
-                // Restringe aos formatos de código de barras + QR (melhora a performance)
                 if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
                     const F = Html5QrcodeSupportedFormats;
                     config.formatsToSupport = [
@@ -316,23 +324,32 @@
                     { facingMode: "environment" },
                     config,
                     (text) => {
-                        // Sucesso na leitura - parar e processar
                         fecharScanner(true);
                         buscarProduto(text);
                     },
-                    () => { /* erros de frame são normais, ignorar */ }
+                    () => {}
                 );
             } catch (err) {
                 console.error('Erro ao iniciar câmera:', err);
-                fecharScanner();
-                if (err && err.name === 'NotAllowedError') {
-                    toast('Permissão de câmera negada. Libere o acesso nas configurações do navegador.', 'error');
-                } else if (err && err.name === 'NotFoundError') {
-                    toast('Nenhuma câmera encontrada neste dispositivo.', 'error');
-                } else {
-                    toast('Não foi possível abrir a câmera: ' + (err.message || err), 'error');
+                // Não fechamos o modal imediatamente para permitir digitar o EAN manual se a câmera falhar
+                const readerEl = document.getElementById('reader');
+                if (readerEl) {
+                    readerEl.innerHTML = `
+                        <div class="text-center p-6 text-gray-400">
+                            <div class="text-4xl mb-2">📷⚠️</div>
+                            <div class="text-sm font-bold text-white mb-1">Câmera indisponível ou bloqueada</div>
+                            <div class="text-xs">Use o campo abaixo para digitar o código de barras.</div>
+                        </div>
+                    `;
                 }
             }
+        }
+
+        function simularEanManual() {
+            const val = document.getElementById('manualEanInput').value.trim();
+            if (!val) return toast('Digite o código de barras', 'error');
+            fecharScanner(true);
+            buscarProduto(val);
         }
 
         async function fecharScanner(silencioso = false) {
@@ -510,6 +527,34 @@
 
         showTab('lista');
         render();
+
+        // Registrar Service Worker simples via Data URI (exigido para PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch", (e) => {});')
+                .catch(e => console.log('SW error:', e));
+        }
+
+        // Suporte para instalação PWA (Prompt de instalação)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('btnInstalar');
+            if(btn) btn.classList.remove('hidden');
+        });
+
+        const btnInstalar = document.getElementById('btnInstalar');
+        if (btnInstalar) {
+            btnInstalar.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') deferredPrompt = null;
+                } else {
+                    toast('No Android/iOS, use o menu do navegador (3 pontos/Compartilhar) -> "Adicionar à Tela Inicial"', 'info');
+                }
+            });
+        }
     </script>
 </body>
 </html>
