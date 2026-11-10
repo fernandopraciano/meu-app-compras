@@ -399,7 +399,7 @@
         <div class="sheet">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Produto encontrado</p>
+                    <p id="precoStatus" class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Produto encontrado</p>
                     <input id="tituloProduto" class="field mt-1 w-full text-lg font-semibold text-ink" value="Produto">
                 </div>
                 <button onclick="fecharModal('modalPreco')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
@@ -1212,175 +1212,697 @@
         }
 
         /* =====================================================================
-           SCANNER DE CÓDIGO DE BARRAS
+        SCANNER DE CÓDIGO DE BARRAS — Motor Híbrido de Alta Precisão
+        - Câmera traseira (principal) em alta resolução + foco contínuo
+        - BarcodeDetector nativo (quando disponível) + ZXing com TRY_HARDER + rotação
+        - Lanterna, zoom, toque para focar, troca de câmera
+        - Leitura por foto e digitação manual
         ===================================================================== */
-        let html5Scanner = null;
         let tempProduct = null;
 
-        async function openScanner() {
-            if (document.getElementById('tempScanner')) return;
+        const SCAN = {
+        state: null,
+        audio: null,
+        ultimoCodigo: '',
+        ultimoTs: 0
+        };
 
-            const modal = document.createElement('div');
-            modal.id = 'tempScanner';
-            modal.className = 'fixed inset-0 z-[60] flex flex-col bg-ink';
-            modal.innerHTML = `
-                <div class="flex items-center justify-between gap-3 px-5 pb-4" style="padding-top:max(1.25rem, env(safe-area-inset-top));">
-                    <div class="min-w-0">
-                        <p class="text-base font-semibold text-white">Escanear produto</p>
-                        <p class="mt-0.5 text-xs text-slate-400">Aponte a câmera para o código de barras</p>
+        const FORMATOS_1D = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'codabar', 'itf'];
+        const FORMATOS_LEITURA = [...FORMATOS_1D, 'qr_code', 'data_matrix'];
+
+        function beepOk() {
+        try {
+        if (!SCAN.audio) SCAN.audio = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = SCAN.audio;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 960;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+        } catch (e) { }
+        }
+
+        function vibrar(ms) {
+        if ('vibrate' in navigator) navigator.vibrate(ms);
+        }
+
+        function checarEan13(codigo) {
+        if (!/^\d{13}$/.test(codigo)) return false;
+        let soma = 0;
+        for (let i = 0; i < 12; i++) soma += Number(codigo[i]) * (i % 2 === 0 ? 1 : 3);
+        return (10 - (soma % 10)) % 10 === Number(codigo[12]);
+        }
+
+        function checarEan8(codigo) {
+        if (!/^\d{8}$/.test(codigo)) return false;
+        let soma = 0;
+        for (let i = 0; i < 7; i++) soma += Number(codigo[i]) * (i % 2 === 0 ? 3 : 1);
+        return (10 - (soma % 10)) % 10 === Number(codigo[7]);
+        }
+
+        function normalizarCodigo(t) {
+        if (/^\d{12}$/.test(t)) return '0' + t; // UPC-A → EAN-13
+        return t;
+        }
+
+        function validarCodigo(texto, formato = '') {
+        const t = String(texto ?? '').trim();
+        if (!t) return null;
+        const f = String(formato || '').toLowerCase().replace(/[\s-]+/g, '_');
+
+        if (f === 'qr_code' || f === 'data_matrix') {
+        return /^\d{6,16}$/.test(t) ? t : null;
+        }
+
+        const tnorm = normalizarCodigo(t);
+        if (/^\d{13}$/.test(tnorm)) return checarEan13(tnorm) ? tnorm : null;
+        if (/^\d{8}$/.test(t)) return checarEan8(t) ? t : null;
+        if (/^\d{6,16}$/.test(t)) return tnorm;
+        if (t.length >= 6 && t.length <= 32 && /^[\w.\-\/+=%]+$/.test(t)) return t;
+        return null;
+        }
+
+        async function criarDetectorNativo() {
+        if (!('BarcodeDetector' in window)) return null;
+        try {
+        const suportados = await window.BarcodeDetector.getSupportedFormats();
+        const desejados = FORMATOS_LEITURA.filter(f => suportados.includes(f));
+        if (!desejados.length) return null;
+        return new window.BarcodeDetector({ formats: desejados });
+        } catch (e) {
+        try { return new window.BarcodeDetector(); } catch (e2) { return null; }
+        }
+        }
+
+        function criarLeitorZxing() {
+        try {
+        if (!window.ZXing) return null;
+        const hints = new Map();
+        const F = ZXing.BarcodeFormat;
+        const formatos = [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.CODE_93, F.CODABAR, F.ITF, F.QR_CODE].filter(v => v !== undefined);
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formatos);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        try { hints.set(ZXing.DecodeHintType.CHARACTER_SET, 'UTF-8'); } catch (e) { }
+        return new ZXing.BrowserMultiFormatReader(hints, 0);
+        } catch (e) {
+        return null;
+        }
+        }
+
+        async function abrirCamera(facing) {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('API de câmera indisponível');
+        const tentativas = [
+        { video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: false },
+        { video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+        { video: { facingMode: facing }, audio: false }
+        ];
+        let erro = null;
+        for (const restricoes of tentativas) {
+        try { return await navigator.mediaDevices.getUserMedia(restricoes); } catch (e) { erro = e; }
+        }
+        throw erro || new Error('Câmera indisponível');
+        }
+
+        async function garantirCameraTraseira(stream, facing) {
+        if (facing !== 'environment') return stream;
+        const track = stream.getVideoTracks()[0];
+        const label = (track?.label || '').toLowerCase();
+        const frontal = /front|user|facetime|selfie/.test(label);
+        if (!frontal) return stream;
+        try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        const traseira = cams.find(d => /back|rear|environment|traseira|wide|main/.test((d.label || '').toLowerCase()));
+        if (!traseira) return stream;
+        stream.getTracks().forEach(t => t.stop());
+        return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: traseira.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        } catch (e) {
+        return stream;
+        }
+        }
+
+        async function aplicarFocoContinuo(stream) {
+        const track = stream?.getVideoTracks?.()[0];
+        if (!track?.getCapabilities) return;
+        const caps = track.getCapabilities();
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+        try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) { }
+        }
+        }
+
+        function configurarControles(s) {
+        const track = s?.stream?.getVideoTracks?.()[0];
+        if (!track) return;
+        const caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
+
+        const btnTorch = document.getElementById('btnTorch');
+        if (btnTorch) btnTorch.classList.toggle('hidden', !caps.torch);
+
+        const zoomWrap = document.getElementById('zoomWrap');
+        if (zoomWrap && caps.zoom) {
+        const slider = document.getElementById('zoomRange');
+        slider.min = caps.zoom.min ?? 1;
+        slider.max = caps.zoom.max ?? 5;
+        slider.step = caps.zoom.step || 0.1;
+        const atual = (track.getSettings && track.getSettings().zoom) || caps.zoom.min || 1;
+        slider.value = Math.min(slider.max, Math.max(slider.min, atual));
+        zoomWrap.classList.remove('hidden');
+        zoomWrap.classList.add('flex');
+        }
+
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        const btnFlip = document.getElementById('btnFlip');
+        if (btnFlip) btnFlip.classList.toggle('hidden', cams.length < 2);
+        }).catch(() => { });
+        }
+
+        async function alternarLanterna() {
+        const s = SCAN.state;
+        if (!s) return;
+        const track = s.stream?.getVideoTracks?.()[0];
+        if (!track) return;
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (!caps.torch) return toast('Lanterna não disponível neste aparelho.', 'info');
+        s.torch = !s.torch;
+        try {
+        await track.applyConstraints({ advanced: [{ torch: s.torch }] });
+        atualizarLanternaUI(s.torch);
+        } catch (e) {
+        s.torch = false;
+        toast('Não foi possível ligar a lanterna.', 'error');
+        }
+        }
+
+        function atualizarLanternaUI(ligado) {
+        const btn = document.getElementById('btnTorch');
+        if (!btn) return;
+        if (ligado) {
+        btn.classList.add('bg-brand-600', 'text-white');
+        btn.classList.remove('bg-white/10', 'text-white');
+        btn.innerHTML = '<i data-lucide="flashlight-off" class="h-5 w-5"></i>';
+        } else {
+        btn.classList.remove('bg-brand-600', 'text-white');
+        btn.classList.add('bg-white/10', 'text-white');
+        btn.innerHTML = '<i data-lucide="flashlight" class="h-5 w-5"></i>';
+        }
+        refreshIcons();
+        }
+
+        async function aplicarZoom(valor) {
+        const s = SCAN.state;
+        if (!s) return;
+        const track = s.stream?.getVideoTracks?.()[0];
+        if (!track) return;
+        try {
+        await track.applyConstraints({ advanced: [{ zoom: Number(valor) }] });
+        } catch (e) { }
+        }
+
+        async function focarNoPonto(event) {
+        const s = SCAN.state;
+        const track = s?.stream?.getVideoTracks?.()[0];
+        if (!track?.getCapabilities) return;
+        const caps = track.getCapabilities();
+        if (!caps.pointsOfInterest && (!caps.focusMode || !caps.focusMode.includes('single-shot'))) return;
+        const rect = s.video.getBoundingClientRect();
+        const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+        const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+        try {
+        const advanced = [];
+        if (caps.pointsOfInterest) advanced.push({ pointsOfInterest: [{ x, y }] });
+        if (caps.focusMode && caps.focusMode.includes('single-shot')) advanced.push({ focusMode: 'single-shot' });
+        if (!advanced.length) return;
+        await track.applyConstraints({ advanced });
+        setTimeout(async () => {
+                try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) { }
+        }, 1200);
+        } catch (e) { }
+        }
+
+        async function alternarCamera() {
+        const s = SCAN.state;
+        if (!s || s.trocando) return;
+        s.trocando = true;
+        try {
+        const nova = s.facing === 'environment' ? 'user' : 'environment';
+        s.scanning = false;
+        clearInterval(s.timer);
+        s.stream?.getTracks().forEach(t => t.stop());
+        const stream = await abrirCamera(nova);
+        s.stream = await garantirCameraTraseira(stream, nova);
+        s.facing = nova;
+        s.video.srcObject = s.stream;
+        await s.video.play();
+        await aplicarFocoContinuo(s.stream);
+        configurarControles(s);
+        s.scanning = true;
+        iniciarLoop();
+        toast(nova === 'environment' ? 'Câmera traseira ativa.' : 'Câmera frontal ativa.', 'info');
+        } catch (e) {
+        toast('Não foi possível trocar de câmera.', 'error');
+        } finally {
+        if (SCAN.state) SCAN.state.trocando = false;
+        }
+        }
+
+        async function escanearFoto(file) {
+        if (!file) return;
+        const input = document.getElementById('scannerFotoInput');
+        if (input) input.value = '';
+        if (!file.type.startsWith('image/')) return toast('Selecione uma imagem.', 'error');
+
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.src = url;
+        try { await img.decode(); } catch { URL.revokeObjectURL(url); return toast('Não foi possível abrir a imagem.', 'error'); }
+
+        let codigo = null;
+        const detector = await criarDetectorNativo();
+        if (detector) {
+        try {
+                const codes = await detector.detect(img);
+                for (const c of codes || []) {
+                    const ok = validarCodigo(c.rawValue, c.format);
+                    if (ok) { codigo = ok; break; }
+                }
+        } catch (e) { }
+        }
+        if (!codigo) {
+        const leitor = criarLeitorZxing();
+        if (leitor) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                const escala = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+                canvas.width = Math.round(img.naturalWidth * escala);
+                canvas.height = Math.round(img.naturalHeight * escala);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                for (const rot of [0, 90]) {
+                    const c2 = document.createElement('canvas');
+                    const x2 = c2.getContext('2d', { willReadFrequently: true });
+                    if (rot === 90) {
+                        c2.width = canvas.height; c2.height = canvas.width;
+                        x2.translate(c2.width, 0); x2.rotate(Math.PI / 2);
+                        x2.drawImage(canvas, 0, 0);
+                    } else {
+                        c2.width = canvas.width; c2.height = canvas.height;
+                        x2.drawImage(canvas, 0, 0);
+                    }
+                    try {
+                        const r = leitor.decodeFromCanvas(c2);
+                        const t = String(r.getText?.() ?? '').trim();
+                        const f = String(r.getBarcodeFormat?.() ?? '');
+                        const ok = validarCodigo(t, f);
+                        if (ok) { codigo = ok; break; }
+                    } catch (e) { }
+                }
+        }
+        }
+        URL.revokeObjectURL(url);
+        if (codigo) { beepOk(); vibrar(60); fecharScanner(); buscarProduto(codigo); }
+        else toast('Não encontrei um código de barras na foto. Tente mais perto e com boa luz.', 'error');
+        }
+
+        function abrirSeletorFoto() {
+        document.getElementById('scannerFotoInput')?.click();
+        }
+
+        function desenharRecorte(s, r) {
+        const { video: v, canvas, ctx } = s;
+        const escala = Math.min(1, 1400 / r.sw);
+        const dw = Math.max(1, Math.round(r.sw * escala));
+        const dh = Math.max(1, Math.round(r.sh * escala));
+        if (r.rot === 90) {
+        canvas.width = dh; canvas.height = dw;
+        ctx.save();
+        ctx.translate(dh, 0);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(v, r.sx, r.sy, r.sw, r.sh, 0, 0, dw, dh);
+        ctx.restore();
+        } else {
+        canvas.width = dw; canvas.height = dh;
+        ctx.drawImage(v, r.sx, r.sy, r.sw, r.sh, 0, 0, dw, dh);
+        }
+        }
+
+        async function tentarNativo(s) {
+        if (!s.detector) return null;
+        try {
+        const codigos = await s.detector.detect(s.video);
+        for (const c of codigos || []) {
+                const ok = validarCodigo(c.rawValue, c.format);
+                if (ok) return ok;
+        }
+        } catch (e) { }
+        return null;
+        }
+
+        function tentarZxing(s) {
+        if (!s.zxing) return null;
+        const v = s.video;
+        const vw = v.videoWidth, vh = v.videoHeight;
+        if (!vw || !vh) return null;
+
+        const recortes = [
+        { sx: vw * 0.03, sy: vh * 0.25, sw: vw * 0.94, sh: vh * 0.5, rot: 0 },
+        { sx: vw * 0.03, sy: vh * 0.25, sw: vw * 0.94, sh: vh * 0.5, rot: 90 }
+        ];
+        if ((s.tick || 0) % 3 === 0) {
+        recortes.push({ sx: 0, sy: 0, sw: vw, sh: vh, rot: 0 });
+        }
+
+        for (const r of recortes) {
+        try {
+                desenharRecorte(s, r);
+                const rst = s.zxing.decodeFromCanvas(s.canvas);
+                if (rst) {
+                    const t = String(rst.getText?.() ?? '').trim();
+                    const f = String(rst.getBarcodeFormat?.() ?? '');
+                    const ok = validarCodigo(t, f);
+                    if (ok) return ok;
+                }
+        } catch (e) { }
+        }
+        return null;
+        }
+
+        function finalizarLeitura(texto) {
+        const s = SCAN.state;
+        if (!s || !s.scanning) return;
+        s.scanning = false;
+        clearInterval(s.timer);
+        beepOk();
+        vibrar(80);
+        const ok = document.getElementById('scanSuccess');
+        if (ok) ok.classList.remove('hidden');
+        SCAN.ultimoCodigo = texto;
+        SCAN.ultimoTs = Date.now();
+        setTimeout(() => {
+        fecharScanner();
+        buscarProduto(texto);
+        }, 420);
+        }
+
+        async function processarQuadro() {
+        const s = SCAN.state;
+        if (!s || !s.scanning || s.busy) return;
+        const v = s.video;
+        if (!v || v.readyState < 2 || !v.videoWidth) return;
+        s.busy = true;
+        try {
+        const nativo = await tentarNativo(s);
+        if (nativo) { finalizarLeitura(nativo); return; }
+        s.tick = (s.tick || 0) + 1;
+        if (!s.detector || s.tick % 2 === 0) {
+                const codigo = tentarZxing(s);
+                if (codigo) { finalizarLeitura(codigo); return; }
+        }
+        } finally {
+        s.busy = false;
+        }
+        }
+
+        function iniciarLoop() {
+        const s = SCAN.state;
+        if (!s) return;
+        s.scanning = true;
+        clearInterval(s.timer);
+        s.timer = setInterval(processarQuadro, 150);
+        }
+
+        function fecharScanner() {
+        const s = SCAN.state;
+        SCAN.state = null;
+        if (s) {
+        s.scanning = false;
+        clearInterval(s.timer);
+        clearTimeout(s.timer2);
+        try { s.stream?.getTracks().forEach(t => t.stop()); } catch (e) { }
+        }
+        document.getElementById('tempScanner')?.remove();
+        if (!document.querySelector('.modal.open')) document.body.classList.remove('overflow-hidden');
+        }
+
+        function mostrarErroCamera(err) {
+        const area = document.getElementById('scanArea');
+        if (!area) return;
+        const negado = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+        const naoEncontrada = err && (err.name === 'NotFoundError');
+        const emUso = err && (err.name === 'NotReadableError');
+        let msg = 'Não foi possível iniciar a câmera.';
+        if (negado) msg = 'Permissão da câmera negada. Libere o acesso nas configurações do navegador.';
+        else if (naoEncontrada) msg = 'Nenhuma câmera encontrada neste dispositivo.';
+        else if (emUso) msg = 'A câmera está em uso por outro aplicativo. Feche-o e tente novamente.';
+        area.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full px-6 text-center">
+                <span class="grid h-14 w-14 place-items-center rounded-full bg-white/10 text-slate-300">
+                    <i data-lucide="${negado ? 'lock' : naoEncontrada ? 'camera-off' : 'alert-triangle'}" class="h-6 w-6"></i>
+                </span>
+                <p class="mt-3 text-sm font-semibold text-white">${msg}</p>
+                <p class="mt-1 max-w-[240px] text-xs leading-relaxed text-slate-400">Use as opções abaixo para continuar.</p>
+                <div class="mt-4 flex gap-2 flex-wrap justify-center">
+                    <button onclick="fecharScanner();openScanner()" class="btn btn-primary">Tentar novamente</button>
+                    <button onclick="abrirSeletorFoto()" class="btn btn-secondary">Usar foto</button>
+                </div>
+        </div>
+        `;
+        refreshIcons();
+        }
+
+        async function openScanner() {
+        if (document.getElementById('tempScanner')) return;
+
+        if (!SCAN.audio) {
+        try { SCAN.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { }
+        }
+        try { SCAN.audio?.resume?.(); } catch (e) { }
+
+        const modal = document.createElement('div');
+        modal.id = 'tempScanner';
+        modal.className = 'fixed inset-0 z-[60] flex flex-col bg-ink';
+        modal.innerHTML = `
+        <div class="flex items-center justify-between gap-3 px-5 pb-3" style="padding-top:max(1.25rem, env(safe-area-inset-top));">
+                <div class="min-w-0">
+                    <p class="text-base font-semibold text-white">Escanear produto</p>
+                    <p class="mt-0.5 text-xs text-slate-400">Câmera traseira · aproxime e mantenha o código no quadro</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                    <button onclick="alternarLanterna()" id="btnTorch" class="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-white active:scale-95" aria-label="Lanterna"><i data-lucide="flashlight" class="h-5 w-5"></i></button>
+                    <button onclick="fecharScanner()" class="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white active:scale-95" aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+                </div>
+        </div>
+
+        <div id="scanArea" class="relative flex-1 overflow-hidden bg-black">
+                <video id="scanVideo" class="h-full w-full object-cover" playsinline autoplay muted onclick="focarNoPonto(event)"></video>
+                <canvas id="scanCanvas" class="hidden"></canvas>
+
+                <div id="scanGuides" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="relative h-[120px] w-[80%] max-w-[320px]">
+                        <span class="absolute -left-0.5 -top-0.5 h-6 w-6 rounded-tl-lg border-l-[3px] border-t-[3px] border-white"></span>
+                        <span class="absolute -right-0.5 -top-0.5 h-6 w-6 rounded-tr-lg border-r-[3px] border-t-[3px] border-white"></span>
+                        <span class="absolute -bottom-0.5 -left-0.5 h-6 w-6 rounded-bl-lg border-b-[3px] border-l-[3px] border-white"></span>
+                        <span class="absolute -bottom-0.5 -right-0.5 h-6 w-6 rounded-br-lg border-b-[3px] border-r-[3px] border-white"></span>
+                        <div class="scan-line absolute inset-x-2 top-1/2 h-0.5 -translate-y-1/2 bg-brand-400"></div>
                     </div>
-                    <button onclick="fecharScanner()" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white active:scale-95" aria-label="Fechar scanner">
-                        <i data-lucide="x" class="h-5 w-5"></i>
+                </div>
+                <p class="pointer-events-none absolute inset-x-0 bottom-5 text-center text-[11px] font-medium text-white/80">Encoste o código no quadro · toque na tela para focar</p>
+
+                <div id="scannerLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-ink/80 text-center">
+                    <span class="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white backdrop-blur">
+                        <i data-lucide="loader-2" class="h-3.5 w-3.5 animate-spin"></i> Iniciando câmera...
+                    </span>
+                </div>
+
+                <div id="scanSuccess" class="absolute inset-0 z-10 hidden items-center justify-center bg-brand-600/95">
+                    <span class="grid h-16 w-16 place-items-center rounded-full bg-white text-brand-600 shadow-xl"><i data-lucide="check" class="h-8 w-8"></i></span>
+                </div>
+
+                <button onclick="abrirSeletorFoto()" class="absolute bottom-5 right-4 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-2 text-[11px] font-semibold text-white backdrop-blur active:scale-95"><i data-lucide="image" class="h-3.5 w-3.5"></i> Foto</button>
+        </div>
+
+        <div class="px-5 pt-3" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+                <div id="zoomWrap" class="mb-3 hidden items-center gap-3">
+                    <i data-lucide="zoom-out" class="h-4 w-4 shrink-0 text-slate-400"></i>
+                    <input id="zoomRange" type="range" min="1" max="5" step="0.1" value="1" oninput="aplicarZoom(this.value)" class="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-[#059669]" aria-label="Zoom da câmera">
+                    <i data-lucide="zoom-in" class="h-4 w-4 shrink-0 text-slate-400"></i>
+                </div>
+                <div class="flex gap-2">
+                    <input id="manualEanInput" inputmode="numeric" autocomplete="off" class="h-12 min-w-0 flex-1 rounded-[14px] border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none" placeholder="Ou digite o código de barras">
+                    <button onclick="simularEanManual()" class="h-12 shrink-0 rounded-[14px] bg-brand-600 px-5 text-sm font-semibold text-white active:scale-95">Buscar</button>
+                </div>
+                <div class="mt-2 flex items-center justify-center gap-2">
+                    <button onclick="alternarCamera()" id="btnFlip" class="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-slate-400 active:scale-95">
+                        <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> Inverter câmera
+                    </button>
+                    <button onclick="abrirSeletorFoto()" class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-slate-400 active:scale-95">
+                        <i data-lucide="image" class="h-3.5 w-3.5"></i> Ler de uma foto
                     </button>
                 </div>
+                <input type="file" id="scannerFotoInput" accept="image/*" class="hidden" onchange="escanearFoto(this.files && this.files[0])">
+        </div>
+        `;
+        document.body.appendChild(modal);
+        document.body.classList.add('overflow-hidden');
+        refreshIcons();
 
-                <div class="relative flex-1 overflow-hidden bg-black">
-                    <div id="reader" class="h-full w-full"></div>
-                    <div id="scannerLoading" class="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                        <span class="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-xs font-medium text-white backdrop-blur">
-                            <i data-lucide="loader-2" class="h-3.5 w-3.5 animate-spin"></i> Iniciando câmera...
-                        </span>
-                    </div>
-                </div>
+        const video = document.getElementById('scanVideo');
+        const canvas = document.getElementById('scanCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-                <div class="px-5 pt-4" style="padding-bottom:max(1.25rem, env(safe-area-inset-bottom));">
-                    <p class="text-center text-[11px] text-slate-400">Câmera indisponível? Digite o código de barras.</p>
-                    <div class="mt-2 flex gap-2">
-                        <input id="manualEanInput" inputmode="numeric" class="h-12 min-w-0 flex-1 rounded-[14px] border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:border-brand-500 focus:outline-none" placeholder="Ex: 7891000100103">
-                        <button onclick="simularEanManual()" class="h-12 shrink-0 rounded-[14px] bg-brand-600 px-5 text-sm font-semibold text-white active:scale-95">Buscar</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.body.classList.add('overflow-hidden');
-            refreshIcons();
+        const sessao = {
+        video, canvas, ctx,
+        stream: null, detector: null, zxing: null,
+        scanning: false, busy: false, timer: null, tick: 0,
+        facing: 'environment', torch: false, trocando: false
+        };
+        SCAN.state = sessao;
 
-            try {
-                html5Scanner = new Html5Qrcode('reader');
+        [sessao.detector, sessao.zxing] = await Promise.all([criarDetectorNativo(), Promise.resolve(criarLeitorZxing())]);
 
-                const config = {
-                    fps: 15,
-                    qrbox: (viewW, viewH) => {
-                        const w = Math.floor(viewW * 0.85);
-                        const h = Math.floor(viewH * 0.5);
-                        return { width: w, height: Math.min(h, 300) };
-                    },
-                    aspectRatio: 1.0
-                };
-
-                if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
-                    const F = Html5QrcodeSupportedFormats;
-                    config.formatsToSupport = [
-                        F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
-                        F.CODE_128, F.CODE_39, F.ITF, F.QR_CODE
-                    ].filter((v) => v !== undefined);
-                }
-
-                await html5Scanner.start(
-                    { facingMode: 'environment' },
-                    config,
-                    (text) => {
-                        fecharScanner(true);
-                        buscarProduto(text);
-                    },
-                    () => {}
-                );
-
-                document.getElementById('scannerLoading')?.remove();
-            } catch (err) {
-                console.error('Erro ao iniciar câmera:', err);
-                document.getElementById('scannerLoading')?.remove();
-                const readerEl = document.getElementById('reader');
-                if (readerEl) {
-                    readerEl.innerHTML = `
-                        <div class="flex h-full flex-col items-center justify-center px-6 text-center">
-                            <span class="grid h-14 w-14 place-items-center rounded-full bg-white/10 text-slate-300">
-                                <i data-lucide="camera-off" class="h-6 w-6"></i>
-                            </span>
-                            <p class="mt-3 text-sm font-semibold text-white">Câmera indisponível</p>
-                            <p class="mt-1 max-w-[240px] text-xs leading-relaxed text-slate-400">Verifique a permissão do navegador ou use o campo abaixo para digitar o código.</p>
-                        </div>
-                    `;
-                    refreshIcons();
-                }
-            }
+        try {
+        const stream = await abrirCamera('environment');
+        sessao.stream = await garantirCameraTraseira(stream, 'environment');
+        video.srcObject = sessao.stream;
+        await video.play();
+        await aplicarFocoContinuo(sessao.stream);
+        configurarControles(sessao);
+        document.getElementById('scannerLoading')?.remove();
+        iniciarLoop();
+        } catch (err) {
+        console.error('Falha ao abrir câmera:', err);
+        document.getElementById('scannerLoading')?.remove();
+        mostrarErroCamera(err);
+        }
         }
 
         function simularEanManual() {
-            const input = document.getElementById('manualEanInput');
-            const value = (input?.value || '').trim();
-            if (!/^\d{8,14}$/.test(value)) return toast('Digite um código de barras válido.', 'error');
-            fecharScanner(true);
-            buscarProduto(value);
+        const input = document.getElementById('manualEanInput');
+        const value = (input?.value || '').replace(/\s/g, '');
+        if (!/^\d{6,16}$/.test(value)) return toast('Digite um código de 6 a 16 dígitos.', 'error');
+        if (value.length === 13 && !checarEan13(value)) return toast('Código inválido — confira os dígitos.', 'error');
+        if (value.length === 8 && !checarEan8(value)) return toast('Código inválido — confira os dígitos.', 'error');
+        fecharScanner();
+        buscarProduto(value);
         }
 
-        async function fecharScanner() {
-            try {
-                if (html5Scanner) {
-                    await html5Scanner.stop();
-                    await html5Scanner.clear();
-                }
-            } catch (e) { /* ignora */ }
-            html5Scanner = null;
-            document.getElementById('tempScanner')?.remove();
-            if (!document.querySelector('.modal.open')) document.body.classList.remove('overflow-hidden');
-        }
-
+        /* =====================================================================
+        BUSCA DE PRODUTO (Open Food Facts + UPCitemdb fallback)
+        Se não encontrado → abre modal para nome/preço manuais
+        ===================================================================== */
         async function buscarProduto(ean) {
-            toast('Buscando produto...', 'info');
-            try {
-                const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(ean)}.json`);
-                const data = await res.json();
-
-                if (data && data.status === 1 && data.product) {
-                    tempProduct = {
-                        name: data.product.product_name || data.product.generic_name || 'Produto sem nome',
-                        cat: data.product.categories_tags && data.product.categories_tags[0]
-                            ? catName(data.product.categories_tags[0])
-                            : 'Outros'
-                    };
-
-                    document.getElementById('tituloProduto').textContent = tempProduct.name;
-                    document.getElementById('inputPrecoItem').value = '';
-                    document.getElementById('inputQtdItem').value = '1';
-                    document.getElementById('precoTotalPreview').textContent = '0,00';
-                    fecharModal('modalPreco');
-                    abrirModal('modalPreco');
-                    setTimeout(() => document.getElementById('inputPrecoItem').focus(), 150);
-                } else {
-                    toast('Produto não encontrado.', 'error');
-                }
-            } catch (e) {
-                toast('Não foi possível consultar o produto.', 'error');
-            }
+        toast('Buscando produto...', 'info');
+        const dados = await consultarProduto(ean);
+        const statusEl = document.getElementById('precoStatus');
+        const nomeEl = document.getElementById('tituloProduto');
+        if (dados) {
+        tempProduct = { name: dados.name, cat: dados.cat };
+        if (statusEl) statusEl.textContent = 'Produto encontrado';
+        nomeEl.value = dados.name;
+        } else {
+        tempProduct = { name: '', cat: 'Outros' };
+        if (statusEl) statusEl.textContent = 'Produto não cadastrado';
+        nomeEl.value = '';
+        nomeEl.placeholder = 'Digite o nome do produto';
+        toast('Código lido! Informe o nome e o preço.', 'info');
+        }
+        document.getElementById('inputPrecoItem').value = '';
+        document.getElementById('inputQtdItem').value = '1';
+        document.getElementById('precoTotalPreview').textContent = '0,00';
+        fecharModal('modalPreco');
+        abrirModal('modalPreco');
+        setTimeout(() => {
+        (dados ? document.getElementById('inputPrecoItem') : document.getElementById('tituloProduto')).focus();
+        }, 150);
         }
 
+        async function consultarProduto(ean) {
+        const codigo = String(ean).trim();
+
+        // 1) Open Food Facts
+        try {
+        const campos = 'product_name,generic_name,brands,categories_tags,quantity';
+        const res = await fetchComTimeout(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=${campos}`, 6000);
+        if (res && res.ok) {
+                const data = await res.json();
+                if (data && data.status === 1 && data.product) {
+                    const nome = (data.product.product_name || data.product.generic_name || '').trim();
+                    if (nome) {
+                        const cats = data.product.categories_tags || [];
+                        return { name: montarNome(nome, data.product.brands), cat: cats[0] ? catName(cats[0]) : 'Outros' };
+                    }
+                }
+        }
+        } catch (e) { }
+
+        // 2) UPCitemdb (fallback gratuito)
+        try {
+        const res = await fetchComTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(codigo)}`, 5000);
+        if (res && res.ok) {
+                const data = await res.json();
+                const item = data && data.items && data.items[0];
+                if (item && item.title) {
+                    return { name: montarNome(item.title, item.brand), cat: item.category ? catName(item.category) : 'Outros' };
+                }
+        }
+        } catch (e) { }
+
+        return null;
+        }
+
+        function montarNome(nome, marca) {
+        const base = String(nome).trim();
+        const m = String(marca || '').split(',')[0].trim();
+        if (!m) return cap(base);
+        if (norm(base).includes(norm(m))) return cap(base);
+        return cap(`${m} — ${base}`);
+        }
+
+        function fetchComTimeout(url, ms) {
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        return fetch(url, { signal: AbortSignal.timeout(ms) }).catch(() => null);
+        }
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { signal: ctrl.signal }).catch(() => null).finally(() => clearTimeout(t));
+        }
+
+        /* =====================================================================
+        CONFIRMAÇÃO DE ADIÇÃO (usa nome editável do input)
+        ===================================================================== */
         function atualizarPrecoPreview() {
-            const price = num(document.getElementById('inputPrecoItem').value);
-            const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
-            const target = document.getElementById('precoTotalPreview');
-            if (target) target.textContent = money(price * qty);
+        const price = num(document.getElementById('inputPrecoItem').value);
+        const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
+        const target = document.getElementById('precoTotalPreview');
+        if (target) target.textContent = money(price * qty);
         }
 
         function confirmarAdicao() {
-            const price = num(document.getElementById('inputPrecoItem').value);
-            const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
+        const nome = (document.getElementById('tituloProduto').value || '').trim();
+        const price = num(document.getElementById('inputPrecoItem').value);
+        const qty = Math.max(1, num(document.getElementById('inputQtdItem').value) || 1);
 
-            if (!(price > 0)) return toast('Informe o preço do produto.', 'error');
+        if (!nome) return toast('Informe o nome do produto.', 'error');
+        if (!(price > 0)) return toast('Informe o preço do produto.', 'error');
 
-            state.items.push({
-                id: uid(),
-                name: tempProduct?.name || 'Produto',
-                cat: catName(tempProduct?.cat || 'Outros'),
-                price,
-                qty,
-                unit: 'un',
-                checked: true
-            });
+        state.items.push({
+        id: uid(),
+        name: nome,
+        cat: catName(tempProduct?.cat || 'Outros'),
+        price,
+        qty,
+        unit: 'un',
+        checked: true
+        });
 
-            fecharModal('modalPreco');
-            save();
-            toast('Produto adicionado à lista.');
+        fecharModal('modalPreco');
+        save();
+        toast('Produto adicionado à lista.');
         }
 
         /* =====================================================================
