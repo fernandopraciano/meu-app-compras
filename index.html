@@ -321,6 +321,9 @@
             <div class="mt-4 flex items-center justify-between gap-3">
                 <p id="estoqueResumo" class="text-[11px] font-medium text-muted"></p>
                 <div class="flex items-center gap-1">
+                    <button onclick="abrirScannerQRNota()" class="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] font-semibold text-brand-700 transition active:scale-95">
+                        <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR da nota
+                    </button>
                     <button onclick="importarDaLista()" class="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-brand-700 transition active:scale-95">
                         <i data-lucide="list-checks" class="h-3.5 w-3.5"></i> Importar lista
                     </button>
@@ -336,6 +339,27 @@
         <!-- ================= RECEITAS ================= -->
         <section id="receitas" class="tab-content hidden">
             <p class="text-xs leading-relaxed text-muted">Sugestões para aproveitar o que você já tem em casa.</p>
+
+            <div class="mt-3 rounded-[18px] border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-4 shadow-card">
+                <div class="flex items-center gap-2.5">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-600 text-white">
+                        <i data-lucide="sparkles" class="h-[18px] w-[18px]"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-ink">Ideias com IA</p>
+                        <p class="text-[11px] leading-snug text-muted">Receitas de café da manhã, almoço e janta com o seu estoque.</p>
+                    </div>
+                    <button onclick="abrirConfigIA()" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-muted ring-1 ring-line active:scale-95" aria-label="Configurar IA">
+                        <i data-lucide="settings" class="h-4 w-4"></i>
+                    </button>
+                </div>
+                <button onclick="gerarReceitasIA()" class="btn btn-primary mt-3 w-full">
+                    <i data-lucide="wand-sparkles" class="h-4 w-4"></i> Gerar ideias de receitas
+                </button>
+            </div>
+
+            <div id="receitas-ia"></div>
+
             <div id="receitas-filtros" class="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5"></div>
             <div id="receitas-root" class="mt-4 space-y-4"></div>
         </section>
@@ -608,6 +632,61 @@
         </div>
     </div>
 
+    <!-- ================= MODAL: CONFIGURAÇÃO DA IA ================= -->
+    <div id="modalConfigIA" class="modal" onclick="if(event.target===this)fecharModal('modalConfigIA')">
+        <div class="sheet">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-ink">Inteligência artificial</h2>
+                    <p class="mt-1 text-xs leading-relaxed text-muted">Conecte uma API de IA para sugerir receitas com o que você tem em casa.</p>
+                </div>
+                <button onclick="fecharModal('modalConfigIA')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-4">
+                <div>
+                    <label class="field-label" for="iaProvider">Provedor</label>
+                    <select id="iaProvider" class="field" onchange="sugerirModeloIA()">
+                        <option value="groq">Groq (grátis, chave em console.groq.com)</option>
+                        <option value="openai">OpenAI (platform.openai.com)</option>
+                        <option value="openrouter">OpenRouter (openrouter.ai/keys)</option>
+                        <option value="gemini">Google Gemini (aistudio.google.com)</option>
+                        <option value="custom">Outro (compatível com OpenAI)</option>
+                    </select>
+                </div>
+
+                <div id="iaBaseWrap" class="hidden">
+                    <label class="field-label" for="iaBaseUrl">URL da API</label>
+                    <input id="iaBaseUrl" class="field" inputmode="url" placeholder="https://api.exemplo.com/v1/chat/completions">
+                </div>
+
+                <div>
+                    <label class="field-label" for="iaModel">Modelo</label>
+                    <input id="iaModel" class="field" placeholder="Ex: llama-3.3-70b-versatile">
+                </div>
+
+                <div>
+                    <label class="field-label" for="iaApiKey">Chave da API</label>
+                    <input id="iaApiKey" type="password" autocomplete="off" class="field" placeholder="Cole aqui sua chave">
+                </div>
+
+                <div class="flex gap-2.5 rounded-[14px] bg-surface px-3.5 py-3">
+                    <i data-lucide="shield-check" class="h-4 w-4 shrink-0 text-brand-600"></i>
+                    <p class="text-[11px] leading-relaxed text-muted">A chave fica salva apenas neste aparelho (localStorage) e é usada direto do navegador. Use uma chave com limite de gastos.</p>
+                </div>
+            </div>
+
+            <div class="mt-5 flex gap-3">
+                <button onclick="fecharModal('modalConfigIA')" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="salvarConfigIA()" class="btn btn-primary flex-1">
+                    <i data-lucide="check" class="h-4 w-4"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODAL: CONFIRMAÇÃO ================= -->
     <div id="modalConfirm" class="modal" onclick="if(event.target===this)fecharModal('modalConfirm')">
         <div class="sheet">
@@ -729,6 +808,18 @@
         function save() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             render();
+        }
+
+        /* Configuração da IA (persistida separadamente) */
+        const AI_KEY = 'minhas-compras:ai';
+        function loadAI() {
+            const padrao = { provider: 'groq', apiKey: '', model: '' };
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem(AI_KEY) || 'null'); } catch (e) { saved = null; }
+            return (saved && typeof saved === 'object') ? { ...padrao, ...saved } : padrao;
+        }
+        function saveAI(cfg) {
+            localStorage.setItem(AI_KEY, JSON.stringify(cfg));
         }
 
         /* =====================================================================
@@ -2278,6 +2369,448 @@
                 preparo: 'Amasse as bananas e misture com ovos, farinha e leite até formar uma massa homogênea. Doure colheradas em frigideira antiaderente e sirva com canela.'
             }
         ];
+
+        let filtroIA = 'todas'; // filtro das receitas geradas por IA
+
+        /* =====================================================================
+           IA — Configuração e Geração de Receitas
+        ===================================================================== */
+        function abrirConfigIA() {
+            const cfg = loadAI();
+            document.getElementById('iaProvider').value = cfg.provider || 'groq';
+            document.getElementById('iaModel').value = cfg.model || '';
+            document.getElementById('iaApiKey').value = cfg.apiKey || '';
+            document.getElementById('iaBaseUrl').value = cfg.baseUrl || '';
+            document.getElementById('iaBaseWrap').classList.toggle('hidden', cfg.provider !== 'custom');
+            abrirModal('modalConfigIA');
+        }
+
+        function sugerirModeloIA() {
+            const prov = document.getElementById('iaProvider').value;
+            const sugestao = {
+                groq: 'llama-3.3-70b-versatile',
+                openai: 'gpt-4o-mini',
+                openrouter: 'anthropic/claude-3.5-sonnet',
+                gemini: 'gemini-1.5-flash',
+                custom: ''
+            }[prov] || '';
+            const input = document.getElementById('iaModel');
+            input.placeholder = sugestao ? `Ex: ${sugestao}` : 'Ex: nome-do-modelo';
+            document.getElementById('iaBaseWrap').classList.toggle('hidden', prov !== 'custom');
+        }
+
+        function salvarConfigIA() {
+            const cfg = {
+                provider: document.getElementById('iaProvider').value,
+                model: document.getElementById('iaModel').value.trim(),
+                apiKey: document.getElementById('iaApiKey').value.trim(),
+                baseUrl: document.getElementById('iaBaseUrl').value.trim()
+            };
+            if (!cfg.apiKey) return toast('Informe a chave da API.', 'error');
+            if (!cfg.model) return toast('Informe o nome do modelo.', 'error');
+            saveAI(cfg);
+            toast('Configuração da IA salva.');
+            fecharModal('modalConfigIA');
+        }
+
+        async function gerarReceitasIA() {
+            const cfg = loadAI();
+            if (!cfg.apiKey || !cfg.model) {
+                toast('Configure a IA primeiro.', 'error');
+                abrirConfigIA();
+                return;
+            }
+
+            const estoqueNomes = state.estoque.filter((e) => Number(e.qty) > 0).map((e) => e.name);
+            if (!estoqueNomes.length) return toast('Seu estoque está vazio.', 'error');
+
+            const container = document.getElementById('receitas-ia');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="mt-3 flex flex-col items-center rounded-[18px] border border-brand-200 bg-brand-50 px-4 py-6 text-center">
+                    <span class="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-200">
+                        <i data-lucide="loader-2" class="h-3.5 w-3.5 animate-spin text-brand-600"></i> Consultando IA...
+                    </span>
+                </div>
+            `;
+            refreshIcons();
+
+            const prompt = montarPromptIA(estoqueNomes);
+
+            try {
+                const resposta = await chamarIA(cfg, prompt);
+                const receitas = parsearRespostaIA(resposta);
+                if (!receitas || !receitas.length) throw new Error('A IA não retornou receitas válidas.');
+                renderReceitasIA(receitas, container);
+                toast(`${receitas.length} receitas geradas com IA!`);
+            } catch (e) {
+                console.error('Erro IA:', e);
+                container.innerHTML = `
+                    <div class="mt-3 flex flex-col items-center rounded-[18px] border border-red-200 bg-red-50 px-4 py-6 text-center">
+                        <span class="grid h-10 w-10 place-items-center rounded-full bg-red-100 text-danger">
+                            <i data-lucide="alert-triangle" class="h-5 w-5"></i>
+                        </span>
+                        <p class="mt-3 text-sm font-semibold text-ink">Erro ao gerar receitas</p>
+                        <p class="mt-1 max-w-[280px] text-xs leading-relaxed text-muted">${esc(e.message || 'Falha na chamada da IA')}</p>
+                        <button onclick="gerarReceitasIA()" class="btn btn-primary mt-4 px-4">Tentar novamente</button>
+                    </div>
+                `;
+                refreshIcons();
+            }
+        }
+
+        function montarPromptIA(estoque) {
+            const itens = estoque.join(', ');
+            return `Você é um nutricionista e chef brasileiro criativo. Crie 6 sugestões de refeições (2 café da manhã, 2 almoço, 2 jantar) usando PRIORITARIAMENTE estes ingredientes que tenho em casa: ${itens}.
+
+Regras:
+- Use o máximo possível dos ingredientes da lista. Ingredientes básicos (sal, óleo, água, arroz, feijão, ovos, farinha, leite, cebola, alho, tomate) podem ser assumidos se não estiverem na lista.
+- Responda APENAS com JSON válido, sem markdown, sem explicações.
+- Formato exato:
+{"receitas":[{"refeicao":"cafe_manha","nome":"Nome","tempo":15,"porcoes":2,"ingredientes":["item1","item2"],"preparo":"Passo a passo curto."},{"refeicao":"almoco","nome":"Nome","tempo":30,"porcoes":3,"ingredientes":["item1"],"preparo":"..."},{"refeicao":"jantar","nome":"Nome","tempo":25,"porcoes":2,"ingredientes":["item1"],"preparo":"..."}]}
+- "refeicao" deve ser "cafe_manha", "almoco" ou "jantar".
+- Nomes criativos e brasileiros. Tempo em minutos (inteiro). Ingredientes em minúsculas. Preparo em português do Brasil, direto.`;
+        }
+
+        function baseUrlParaProvider(p) {
+            return {
+                groq: 'https://api.groq.com/openai/v1/chat/completions',
+                openai: 'https://api.openai.com/v1/chat/completions',
+                openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+                gemini: 'https://generativelanguage.googleapis.com/v1beta/models/'
+            }[p];
+        }
+
+        async function chamarIA(cfg, prompt) {
+            const url = cfg.provider === 'gemini'
+                ? `${baseUrlParaProvider(cfg.provider)}${cfg.model}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`
+                : (baseUrlParaProvider(cfg.provider) || cfg.baseUrl);
+
+            if (!url) throw new Error('Provedor desconhecido.');
+
+            const body = cfg.provider === 'gemini'
+                ? { contents: [{ parts: [{ text: prompt }] }] }
+                : {
+                    model: cfg.model,
+                    messages: [
+                        { role: 'system', content: 'Você responde APENAS JSON válido.' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                  };
+
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(cfg.provider === 'openrouter' ? { 'HTTP-Referer': 'https://github.com/fernandopraciano/meu-app-compras', 'X-Title': 'Minhas Compras' } : {}),
+                ...(cfg.provider === 'gemini' ? {} : { 'Authorization': `Bearer ${cfg.apiKey}` })
+            };
+
+            const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+            if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+            }
+            const data = await res.json();
+
+            if (cfg.provider === 'gemini') {
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            }
+            return data.choices?.[0]?.message?.content || '';
+        }
+
+        function parsearRespostaIA(texto) {
+            try {
+                const limpo = String(texto).trim().replace(/^```json\s*|```$/g, '').trim();
+                const obj = JSON.parse(limpo);
+                if (!obj.receitas || !Array.isArray(obj.receitas)) return null;
+                return obj.receitas.map((r) => ({
+                    id: `ia-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    nome: String(r.nome || 'Receita IA').trim(),
+                    tempo: Number(r.tempo) || 20,
+                    porcoes: Number(r.porcoes) || 2,
+                    icone: iconeParaRefeicao(r.refeicao),
+                    cor: corParaRefeicao(r.refeicao),
+                    ingredientes: (r.ingredientes || []).map((i) => String(i).toLowerCase().trim()).filter(Boolean),
+                    preparo: String(r.preparo || 'Modo de preparo não informado.'),
+                    refeicao: r.refeicao,
+                    isIA: true
+                }));
+            } catch (e) {
+                console.error('Parse IA erro:', e, texto);
+                return null;
+            }
+        }
+
+        function iconeParaRefeicao(r) {
+            return { cafe_manha: 'sunrise', almoco: 'sun', jantar: 'moon' }[r] || 'chef-hat';
+        }
+        function corParaRefeicao(r) {
+            return {
+                cafe_manha: 'from-amber-100 to-orange-50',
+                almoco: 'from-orange-100 to-amber-50',
+                jantar: 'from-indigo-100 to-purple-50'
+            }[r] || 'from-brand-100 to-brand-50';
+        }
+
+        function renderReceitasIA(receitas, container) {
+            const chipsFiltro = [
+                { id: 'todas', label: 'Todas (IA)' },
+                { id: 'cafe_manha', label: 'Café da manhã' },
+                { id: 'almoco', label: 'Almoço' },
+                { id: 'jantar', label: 'Jantar' }
+            ];
+
+            const render = () => {
+                let lista = receitas;
+                if (filtroIA !== 'todas') lista = lista.filter((r) => r.refeicao === filtroIA);
+
+                container.innerHTML = `
+                    <div class="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-0.5">
+                        ${chipsFiltro.map((c) => `<button onclick="filtroIA='${c.id}';renderReceitasIALocal()" class="shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${filtroIA === c.id ? 'border-brand-600 bg-brand-600 text-white' : 'border-line bg-white text-muted hover:border-slate-300'}">${c.label}</button>`).join('')}
+                    </div>
+                    ${!lista.length ? `
+                        <div class="flex flex-col items-center rounded-[20px] border border-dashed border-line bg-white px-6 py-9 text-center">
+                            <span class="grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand-600"><i data-lucide="chef-hat" class="h-6 w-6"></i></span>
+                            <h3 class="mt-4 text-base font-semibold text-ink">Nenhuma receita</h3>
+                            <p class="mt-1 max-w-[250px] text-xs leading-relaxed text-muted">Tente outro filtro.</p>
+                        </div>
+                    ` : lista.map((r) => `
+                        <article class="overflow-hidden rounded-[20px] border border-line bg-white shadow-card">
+                            <div class="relative h-24 bg-gradient-to-br ${r.cor}">
+                                <i data-lucide="${r.icone}" class="absolute -right-3 -top-2 h-[88px] w-[88px] text-white/70"></i>
+                                <div class="absolute bottom-3 left-4 flex items-center gap-2">
+                                    <span class="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-ink backdrop-blur">${r.tempo} min</span>
+                                    <span class="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-ink backdrop-blur">${r.porcoes} porções</span>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="flex-1 text-sm font-semibold text-ink">${esc(r.nome)}</h3>
+                                    <span class="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">IA</span>
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    ${r.ingredientes.slice(0, 5).map((ing) => {
+                                        const tem = temIngrediente(ing);
+                                        return `<span class="rounded-full px-2 py-0.5 text-[10px] font-medium ${tem ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-500'}">${esc(ing)}</span>`;
+                                    }).join('')}
+                                </div>
+                                <div class="mt-3 flex items-center justify-between gap-3">
+                                    <span class="text-[11px] font-medium text-muted">${esc({ cafe_manha: 'Café da manhã', almoco: 'Almoço', jantar: 'Jantar' }[r.refeicao] || r.refeicao)}</span>
+                                    <button onclick="abrirReceitaIA('${r.id}')" class="text-[11px] font-semibold text-brand-600 active:scale-95">Ver receita</button>
+                                </div>
+                            </div>
+                        </article>
+                    `).join('')}
+                `;
+                refreshIcons();
+            };
+
+            window.renderReceitasIALocal = render;
+            window.receitasIAAtual = receitas;
+            render();
+        }
+
+        function abrirReceitaIA(id) {
+            const receita = (window.receitasIAAtual || []).find((r) => r.id === id);
+            if (!receita) return;
+
+            const faltantes = receita.ingredientes.filter((i) => !temIngrediente(i));
+
+            document.getElementById('receitaConteudo').innerHTML = `
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Receita IA · ${esc({ cafe_manha: 'Café da manhã', almoco: 'Almoço', jantar: 'Jantar' }[receita.refeicao] || receita.refeicao)}</p>
+                        <h2 class="mt-1 text-lg font-semibold leading-snug text-ink">${esc(receita.nome)}</h2>
+                    </div>
+                    <button onclick="fecharModal('modalReceita')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95"><i data-lucide="x" class="h-4 w-4"></i></button>
+                </div>
+                <div class="mt-4 flex items-center gap-2">
+                    <span class="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-muted"><i data-lucide="clock" class="h-3.5 w-3.5"></i> ${receita.tempo} min</span>
+                    <span class="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-muted"><i data-lucide="users" class="h-3.5 w-3.5"></i> ${receita.porcoes} porções</span>
+                </div>
+                <div class="mt-5">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Ingredientes</p>
+                    <div class="mt-2 space-y-1.5">
+                        ${receita.ingredientes.map((ing) => {
+                            const tem = temIngrediente(ing);
+                            return `<div class="flex items-center justify-between gap-3 rounded-[12px] px-3 py-2 ${tem ? 'bg-brand-50/60' : 'bg-surface'}"><span class="text-sm font-medium ${tem ? 'text-brand-700' : 'text-muted'}">${esc(ing)}</span><span class="flex items-center gap-1 text-[10px] font-semibold ${tem ? 'text-brand-600' : 'text-slate-400'}"><i data-lucide="${tem ? 'check' : 'plus'}" class="h-3.5 w-3.5"></i>${tem ? 'Em casa' : 'Falta'}</span></div>`;
+                        }).join('')}
+                    </div>
+                </div>
+                <div class="mt-5">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Modo de preparo</p>
+                    <p class="mt-2 text-sm leading-relaxed text-muted">${esc(receita.preparo)}</p>
+                </div>
+                <div class="mt-6">
+                    ${faltantes.length
+                        ? `<button onclick="adicionarFaltantesIA('${receita.id}')" class="btn btn-primary w-full"><i data-lucide="plus" class="h-4 w-4"></i> Adicionar ${faltantes.length} ${faltantes.length === 1 ? 'faltante' : 'faltantes'} à lista</button>`
+                        : `<div class="flex items-center justify-center gap-2 rounded-[14px] bg-brand-50 py-3.5 text-sm font-semibold text-brand-700"><i data-lucide="check-circle-2" class="h-4 w-4"></i> Você tem todos os ingredientes</div>`}
+                </div>
+            `;
+
+            abrirModal('modalReceita');
+            refreshIcons();
+        }
+
+        function adicionarFaltantesIA(id) {
+            const receita = (window.receitasIAAtual || []).find((r) => r.id === id);
+            if (!receita) return;
+
+            const faltantes = receita.ingredientes.filter((i) => !temIngrediente(i));
+            if (!faltantes.length) return;
+
+            faltantes.forEach((nome) => {
+                state.items.push({ id: uid(), name: cap(nome), cat: 'Outros', price: 0, qty: 1, unit: 'un', checked: false });
+            });
+
+            fecharModal('modalReceita');
+            save();
+            toast(`${faltantes.length} ${faltantes.length === 1 ? 'ingrediente adicionado' : 'ingredientes adicionados'} à lista.`);
+        }
+
+        /* =====================================================================
+           QR CODE DA NOTA FISCAL (NFCe/SAT)
+        ===================================================================== */
+        async function abrirScannerQRNota() {
+            if (document.getElementById('tempScanner')) return;
+
+            const modal = document.createElement('div');
+            modal.id = 'tempScanner';
+            modal.className = 'fixed inset-0 z-[60] flex flex-col bg-ink';
+            modal.innerHTML = `
+                <div class="flex items-center justify-between gap-3 px-5 pb-4" style="padding-top:max(1.25rem, env(safe-area-inset-top));">
+                    <div class="min-w-0">
+                        <p class="text-base font-semibold text-white">Ler QR Code da nota</p>
+                        <p class="mt-0.5 text-xs text-slate-400">Aponte para o QR Code da NFCe ou SAT</p>
+                    </div>
+                    <button onclick="fecharScanner()" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white active:scale-95"><i data-lucide="x" class="h-5 w-5"></i></button>
+                </div>
+                <div class="relative flex-1 bg-black">
+                    <video id="video" class="h-full w-full object-cover" playsinline></video>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="h-56 w-64 rounded-2xl border-2 border-brand-500/50 shadow-inner">
+                            <div class="scan-line h-1 w-full bg-brand-500 shadow-[0_0_10px_#10B981]"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 pt-4" style="padding-bottom:max(1.25rem, env(safe-area-inset-bottom));">
+                    <input id="manualQRInput" class="field" placeholder="Ou cole o conteúdo do QR Code / chave de acesso (44 dígitos)">
+                    <button onclick="processarQRManual()" class="btn btn-primary mt-2 w-full">Processar</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.body.classList.add('overflow-hidden');
+            refreshIcons();
+
+            const codeReader = new ZXing.BrowserMultiFormatReader();
+            try {
+                const video = document.getElementById('video');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+                codeReader.decodeFromStream(stream, video, (result, err) => {
+                    if (result) {
+                        fecharScanner();
+                        processarQRNotaFiscal(result.text);
+                    }
+                });
+            } catch (err) {
+                toast('Câmera indisponível.', 'error');
+            }
+        }
+
+        function processarQRManual() {
+            const input = document.getElementById('manualQRInput');
+            const valor = (input?.value || '').trim();
+            if (!valor) return toast('Cole o conteúdo do QR Code ou a chave.', 'error');
+            fecharScanner();
+            processarQRNotaFiscal(valor);
+        }
+
+        function processarQRNotaFiscal(qrTexto) {
+            let chave = '';
+            let urlConsulta = null;
+            const texto = String(qrTexto || '').trim();
+
+            // Chave de acesso (44 dígitos) direta
+            const m = texto.match(/chNFe=(\d{44})/i) || texto.match(/[?&](?:p|chave|ch|nf)=(\d{44})/i);
+            if (m) chave = m[1];
+            else if (/^\d{44}$/.test(texto)) chave = texto;
+
+            if (!chave) {
+                toast('QR Code não reconhecido como nota fiscal (NFCe/SAT).', 'error');
+                return;
+            }
+
+            // Monta a URL de consulta (funciona para a maioria das SEFAZ)
+            urlConsulta = `https://www.nfe.fazenda.gov.br/portal/consultaNotaFiscal.aspx?chave=${chave}`;
+
+            toast('Analisando a nota fiscal...', 'info');
+            processarNotaQRFetch(chave, urlConsulta);
+        }
+
+        async function processarNotaQRFetch(chave, urlConsulta) {
+            const btn = document.getElementById('btnProcessarNota');
+            const original = btn ? btn.innerHTML : '';
+
+            try {
+                // Tenta consultar a nota via proxy CORS público
+                const proxys = [
+                    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+                    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
+                ];
+
+                let html = '';
+                for (const proxy of proxys) {
+                    try {
+                        const res = await fetch(proxy(urlConsulta), { signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined });
+                        if (res && res.ok) {
+                            html = await res.text();
+                            if (html) break;
+                        }
+                    } catch (e) { /* tenta o próximo proxy */ }
+                }
+
+                if (html) {
+                    // Extrai o texto visível da página HTML
+                    const div = document.createElement('div');
+                    div.innerHTML = html;
+                    const textoVisivel = (div.textContent || '').replace(/<[^>]*>/g, ' ');
+
+                    const itens = extrairItensNota(textoVisivel);
+                    if (itens && itens.length) {
+                        itens.forEach((nome) => {
+                            adicionarEstoqueInterno({
+                                name: nome,
+                                qty: 1,
+                                unit: inferirUnidade(nome),
+                                cat: 'Outros'
+                            });
+                        });
+                        save();
+                        toast(`${itens.length} ${itens.length === 1 ? 'item adicionado' : 'itens adicionados'} ao estoque!`);
+                        showTab('estoque');
+                        return;
+                    }
+                }
+
+                // Fallback: consulta bloqueada por CORS/captcha.
+                // Abre a consulta oficial e orienta o uso do OCR existente.
+                window.open(urlConsulta, '_blank');
+                abrirModal('modalNota');
+                toast('Consulta aberta. Cole o texto dos itens ou envie a foto da nota.', 'info');
+            } catch (e) {
+                console.error('Erro ao consultar nota:', e);
+                window.open(urlConsulta, '_blank');
+                abrirModal('modalNota');
+                toast('Não foi possível consultar automaticamente. Use o texto ou a foto da nota.', 'info');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    refreshIcons();
+                }
+            }
+        }
 
         let filtroReceitas = 'todas';
 
