@@ -3236,8 +3236,34 @@ Regras:
         }
 
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch((err) => console.log('Service worker não registrado:', err));
+            window.addEventListener('load', async () => {
+                try {
+                    const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+                    // Verifica atualizações do service worker a cada abertura
+                    reg.update().catch(() => {});
+
+                    // Quando um novo SW assume o controle, recarrega a página uma vez
+                    let recarregando = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (recarregando) return;
+                        recarregando = true;
+                        window.location.reload();
+                    });
+
+                    // Se já houver um SW em espera, ativa imediatamente
+                    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    reg.addEventListener('updatefound', () => {
+                        const novo = reg.installing;
+                        if (!novo) return;
+                        novo.addEventListener('statechange', () => {
+                            if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+                                novo.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    });
+                } catch (err) {
+                    console.log('Service worker não registrado:', err);
+                }
             });
         }
 
