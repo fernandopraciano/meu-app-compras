@@ -425,6 +425,7 @@
                 <div class="min-w-0">
                     <p id="precoStatus" class="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-600">Produto encontrado</p>
                     <input id="tituloProduto" class="field mt-1 w-full text-lg font-semibold text-ink" value="Produto">
+                    <p id="precoInfo" class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted"></p>
                 </div>
                 <button onclick="fecharModal('modalPreco')" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-muted active:scale-95" aria-label="Fechar">
                     <i data-lucide="x" class="h-4 w-4"></i>
@@ -1660,12 +1661,19 @@
         const vw = v.videoWidth, vh = v.videoHeight;
         if (!vw || !vh) return null;
 
+        // Várias regiões de interesse: faixa central horizontal (1D), faixa vertical (1D rotacionado)
+        // e quadro completo a cada 4 ticks (para QR/DataMatrix e códigos fora do centro).
+        const tick = s.tick || 0;
         const recortes = [
-        { sx: vw * 0.03, sy: vh * 0.25, sw: vw * 0.94, sh: vh * 0.5, rot: 0 },
-        { sx: vw * 0.03, sy: vh * 0.25, sw: vw * 0.94, sh: vh * 0.5, rot: 90 }
+        { sx: vw * 0.02, sy: vh * 0.20, sw: vw * 0.96, sh: vh * 0.60, rot: 0 },
+        { sx: vw * 0.02, sy: vh * 0.20, sw: vw * 0.96, sh: vh * 0.60, rot: 90 },
+        { sx: vw * 0.05, sy: vh * 0.32, sw: vw * 0.90, sh: vh * 0.36, rot: 0 }
         ];
-        if ((s.tick || 0) % 3 === 0) {
+        if (tick % 4 === 0) {
         recortes.push({ sx: 0, sy: 0, sw: vw, sh: vh, rot: 0 });
+        }
+        if (tick % 8 === 4) {
+        recortes.push({ sx: 0, sy: 0, sw: vw, sh: vh, rot: 90 });
         }
 
         for (const r of recortes) {
@@ -1707,12 +1715,14 @@
         if (!v || v.readyState < 2 || !v.videoWidth) return;
         s.busy = true;
         try {
-        const nativo = await tentarNativo(s);
-        if (nativo) { finalizarLeitura(nativo); return; }
         s.tick = (s.tick || 0) + 1;
-        if (!s.detector || s.tick % 2 === 0) {
-                const codigo = tentarZxing(s);
-                if (codigo) { finalizarLeitura(codigo); return; }
+        // ZXing roda em TODOS os ticks (motor principal, síncrono e preciso para 1D).
+        // O BarcodeDetector nativo (quando existe) é o reforço para QR/DataMatrix.
+        const codigo = tentarZxing(s);
+        if (codigo) { finalizarLeitura(codigo); return; }
+        if (s.detector && s.tick % 2 === 0) {
+                const nativo = await tentarNativo(s);
+                if (nativo) { finalizarLeitura(nativo); return; }
         }
         } finally {
         s.busy = false;
@@ -1883,24 +1893,38 @@
         }
 
         /* =====================================================================
-        BUSCA DE PRODUTO (Open Food Facts + UPCitemdb fallback)
+        BUSCA DE PRODUTO (múltiplas fontes online: OFF, UPCitemdb, etc.)
         Se não encontrado → abre modal para nome/preço manuais
         ===================================================================== */
         async function buscarProduto(ean) {
-        toast('Buscando produto...', 'info');
+        toast('Buscando produto na internet...', 'info');
         const dados = await consultarProduto(ean);
         const statusEl = document.getElementById('precoStatus');
         const nomeEl = document.getElementById('tituloProduto');
+        const infoEl = document.getElementById('precoInfo');
+        const codigo = String(ean).trim();
+
+        // Mostra o código lido sempre
+        if (infoEl) {
+            const fonte = dados && dados.source ? `Fonte: ${dados.source}` : 'Pesquisa na internet sem resultado';
+            infoEl.innerHTML = `<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium"><i data-lucide="barcode" class="h-3 w-3"></i> ${esc(codigo)}</span>`;
+            if (dados && dados.source) {
+                infoEl.innerHTML += `<span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700"><i data-lucide="globe" class="h-3 w-3"></i> ${esc(dados.source)}</span>`;
+            }
+            refreshIcons();
+        }
+
         if (dados) {
         tempProduct = { name: dados.name, cat: dados.cat };
-        if (statusEl) statusEl.textContent = 'Produto encontrado';
+        if (statusEl) statusEl.textContent = 'Produto encontrado online';
         nomeEl.value = dados.name;
+        toast(`Produto encontrado: ${dados.name}`, 'success');
         } else {
         tempProduct = { name: '', cat: 'Outros' };
-        if (statusEl) statusEl.textContent = 'Produto não cadastrado';
+        if (statusEl) statusEl.textContent = 'Produto não encontrado na internet';
         nomeEl.value = '';
         nomeEl.placeholder = 'Digite o nome do produto';
-        toast('Código lido! Informe o nome e o preço.', 'info');
+        toast('Código lido! Nome não encontrado online — digite manualmente.', 'info');
         }
         document.getElementById('inputPrecoItem').value = '';
         document.getElementById('inputQtdItem').value = '1';
@@ -1914,34 +1938,64 @@
 
         async function consultarProduto(ean) {
         const codigo = String(ean).trim();
+        const fontes = [];
 
-        // 1) Open Food Facts
+        // 1) Open Food Facts (principal, base comunitária global)
         try {
-        const campos = 'product_name,generic_name,brands,categories_tags,quantity';
-        const res = await fetchComTimeout(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=${campos}`, 6000);
-        if (res && res.ok) {
+            const campos = 'product_name,generic_name,brands,categories_tags,quantity,ingredients_text,image_url';
+            const res = await fetchComTimeout(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=${campos}`, 8000);
+            if (res && res.ok) {
                 const data = await res.json();
                 if (data && data.status === 1 && data.product) {
                     const nome = (data.product.product_name || data.product.generic_name || '').trim();
                     if (nome) {
                         const cats = data.product.categories_tags || [];
-                        return { name: montarNome(nome, data.product.brands), cat: cats[0] ? catName(cats[0]) : 'Outros' };
+                        fontes.push({ name: montarNome(nome, data.product.brands), cat: cats[0] ? catName(cats[0]) : 'Outros', source: 'Open Food Facts', confidence: 0.95 });
                     }
                 }
-        }
+            }
         } catch (e) { }
 
-        // 2) UPCitemdb (fallback gratuito)
+        // 2) UPCitemdb (base comercial, boa para produtos US/internacionais)
         try {
-        const res = await fetchComTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(codigo)}`, 5000);
-        if (res && res.ok) {
+            const res = await fetchComTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(codigo)}`, 6000);
+            if (res && res.ok) {
                 const data = await res.json();
                 const item = data && data.items && data.items[0];
                 if (item && item.title) {
-                    return { name: montarNome(item.title, item.brand), cat: item.category ? catName(item.category) : 'Outros' };
+                    fontes.push({ name: montarNome(item.title, item.brand), cat: item.category ? catName(item.category) : 'Outros', source: 'UPCitemdb', confidence: 0.85 });
                 }
-        }
+            }
         } catch (e) { }
+
+        // 3) Barcode Lookup API (gratuita, boa cobertura)
+        try {
+            const res = await fetchComTimeout(`https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(codigo)}&formatted=y&key=demo`, 6000);
+            if (res && res.ok) {
+                const data = await res.json();
+                const product = data && data.products && data.products[0];
+                if (product && product.product_name) {
+                    fontes.push({ name: montarNome(product.product_name, product.brand), cat: product.category ? catName(product.category) : 'Outros', source: 'Barcode Lookup', confidence: 0.8 });
+                }
+            }
+        } catch (e) { }
+
+        // 4) Go-UPC (API aberta)
+        try {
+            const res = await fetchComTimeout(`https://go-upc.com/api/v1/code/${encodeURIComponent(codigo)}`, 6000);
+            if (res && res.ok) {
+                const data = await res.json();
+                if (data && data.product && data.product.name) {
+                    fontes.push({ name: montarNome(data.product.name, data.product.brand), cat: data.product.category ? catName(data.product.category) : 'Outros', source: 'Go-UPC', confidence: 0.75 });
+                }
+            }
+        } catch (e) { }
+
+        // Retorna o resultado com maior confiança
+        if (fontes.length > 0) {
+            fontes.sort((a, b) => b.confidence - a.confidence);
+            return fontes[0];
+        }
 
         return null;
         }

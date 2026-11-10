@@ -1,7 +1,7 @@
 /* Service Worker — Minhas Compras (PWA)
    Estratégia: NETWORK-FIRST para o app (sempre pega a versão nova quando online),
    com fallback para cache quando offline. */
-const CACHE_NAME = 'minhas-compras-v3';
+const CACHE_NAME = 'minhas-compras-v4';
 
 const ASSETS = [
     './',
